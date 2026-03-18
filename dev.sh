@@ -73,7 +73,7 @@ wait_healthy() {
 
 is_first_run() {
   # First run = geen bestaande database volume
-  ! docker volume ls --format '{{.Name}}' | grep -q "webvakwerk-ticket_pgdata"
+  ! docker volume ls --format '{{.Name}}' | grep -q "ticket-system_pgdata"
 }
 
 # ─── Commands ─────────────────────────────────────────────────────────────────
@@ -290,7 +290,7 @@ cmd_db() {
   header "🗄   Database shell (psql)"
   info "Typ '\\q' om te sluiten, '\\dt' voor tabeloverzicht"
   echo ""
-  docker exec -it webvakwerk-ticket-db-1 psql -U app -d app
+  docker compose exec db psql -U app -d app
 }
 
 # Admin gebruiker aanmaken via SEED_ADMIN_* in .env
@@ -307,12 +307,12 @@ cmd_seed() {
   fi
 
   local result
-  result=$(docker exec \
+  if ! result=$(docker compose exec -T \
     -e DATABASE_URL="postgresql://app:$(grep POSTGRES_PASSWORD .env | cut -d= -f2)@db:5432/app" \
     -e SEED_ADMIN_EMAIL="$email" \
     -e SEED_ADMIN_PASSWORD="$pass" \
     -e SEED_ADMIN_NAME="${name:-Admin}" \
-    webvakwerk-ticket-web-1 \
+    web \
     node -e "
 const { PrismaClient } = require('/app/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/@prisma/client');
 const bcrypt = require('/app/node_modules/.pnpm/bcryptjs@2.4.3/node_modules/bcryptjs');
@@ -328,7 +328,10 @@ async function main() {
   console.log('CREATED');
 }
 main().catch(e => { console.error('ERROR', e.message); process.exit(1); }).finally(() => db.\$disconnect());
-" 2>&1)
+" 2>&1); then
+    warn "Seeden mislukt: $result"
+    return 1
+  fi
 
   if echo "$result" | grep -q "CREATED"; then
     success "Admin account aangemaakt: ${email}"

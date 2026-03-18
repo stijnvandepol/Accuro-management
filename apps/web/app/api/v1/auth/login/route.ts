@@ -11,7 +11,7 @@ import {
   serverError,
   withErrorHandler,
 } from '@/lib/api-helpers'
-import { authRateLimit, getClientIp } from '@/lib/rate-limit'
+import { authRateLimit, clearAuthRateLimit, getClientIp } from '@/lib/rate-limit'
 import { logger } from '@/lib/logger'
 
 const loginSchema = z.object({
@@ -20,10 +20,6 @@ const loginSchema = z.object({
 })
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
-  // Rate limiting
-  const rl = await authRateLimit(req)
-  if (!rl.allowed) return tooManyRequests(rl.reset)
-
   let body: unknown
   try {
     body = await req.json()
@@ -37,6 +33,10 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   }
 
   const { email, password } = result.data
+
+  // Rate limiting: scope by IP + normalized email where possible.
+  const rl = await authRateLimit(req, email)
+  if (!rl.allowed) return tooManyRequests(rl.reset)
 
   const user = await db.user.findUnique({
     where: { email: email.toLowerCase() },
@@ -65,6 +65,7 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
 
   const { accessToken, refreshToken } = await createSession(user.id)
   await setAuthCookies(accessToken, refreshToken)
+  await clearAuthRateLimit(req, email)
 
   logger.auth('login successful', { userId: user.id, role: user.role, ip: getClientIp(req) })
 

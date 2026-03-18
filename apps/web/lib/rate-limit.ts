@@ -35,6 +35,14 @@ export interface RateLimitResult {
   limit: number
 }
 
+const PRIVATE_IP_PATTERNS = [
+  /^127\./,
+  /^::1$/,
+  /^10\./,
+  /^192\.168\./,
+  /^172\.(1[6-9]|2\d|3[0-1])\./,
+]
+
 export async function rateLimit(
   key: string,
   limit: number,
@@ -87,10 +95,46 @@ export function getClientIp(req: NextRequest): string {
   return '127.0.0.1'
 }
 
-// Auth-specific rate limiter: 5 attempts per 15 minutes
-export async function authRateLimit(req: NextRequest): Promise<RateLimitResult> {
+function isPrivateOrLocalIp(ip: string): boolean {
+  return PRIVATE_IP_PATTERNS.some((pattern) => pattern.test(ip))
+}
+
+export function shouldBypassAuthRateLimit(req: NextRequest): boolean {
+  if (process.env.NODE_ENV !== 'production') return true
+  return isPrivateOrLocalIp(getClientIp(req))
+}
+
+export function buildAuthRateLimitKey(req: NextRequest, email?: string): string {
   const ip = getClientIp(req)
-  return rateLimit(`auth:${ip}`, 5, 15 * 60)
+  const normalizedEmail = email?.trim().toLowerCase()
+  return normalizedEmail ? `auth:${ip}:${normalizedEmail}` : `auth:${ip}`
+}
+
+export async function clearRateLimit(key: string): Promise<void> {
+  try {
+    const redis = getRedis()
+    if (redis.status !== 'ready') {
+      await redis.connect()
+    }
+    await redis.del(`rl:${key}`)
+  } catch {
+    // Best effort only — never block auth flow on limiter cleanup.
+  }
+}
+
+// Auth-specific rate limiter: 5 attempts per 15 minutes
+export async function authRateLimit(req: NextRequest, email?: string): Promise<RateLimitResult> {
+  if (shouldBypassAuthRateLimit(req)) {
+    const now = Math.floor(Date.now() / 1000)
+    return { allowed: true, remaining: 5, reset: now + 15 * 60, limit: 5 }
+  }
+
+  return rateLimit(buildAuthRateLimitKey(req, email), 5, 15 * 60)
+}
+
+export async function clearAuthRateLimit(req: NextRequest, email?: string): Promise<void> {
+  if (shouldBypassAuthRateLimit(req)) return
+  await clearRateLimit(buildAuthRateLimitKey(req, email))
 }
 
 // General API rate limiter: 100 requests per minute
