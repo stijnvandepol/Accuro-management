@@ -1,0 +1,394 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Users & Auth ─────────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  name         String
+  passwordHash String
+  role         Role     @default(DEVELOPER)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  refreshTokens   RefreshToken[]
+  assignedTickets Ticket[]        @relation("AssignedTickets")
+  createdLeads    Lead[]          @relation("CreatedLeads")
+  createdProjects Project[]       @relation("CreatedProjects")
+  notifications   Notification[]
+  activityLogs    ActivityLog[]
+  apiKeys         ApiKey[]
+  comments        TicketComment[]
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  PROJECT_MANAGER
+  DEVELOPER
+  SALES
+}
+
+model RefreshToken {
+  id        String    @id @default(cuid())
+  token     String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  family    String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+}
+
+model ApiKey {
+  id          String    @id @default(cuid())
+  name        String
+  keyHash     String    @unique
+  keyPrefix   String
+  scopes      String[]
+  createdById String
+  createdBy   User      @relation(fields: [createdById], references: [id])
+  lastUsedAt  DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// ─── Clients ──────────────────────────────────────────────────────────────────
+
+model Client {
+  id          String    @id @default(cuid())
+  name        String
+  companyName String?
+  email       String?
+  phone       String?
+  website     String?
+  notes       String?
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  contacts ClientContact[]
+  leads    Lead[]
+  projects Project[]
+}
+
+model ClientContact {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  name      String
+  email     String?
+  phone     String?
+  role      String?
+  isPrimary Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ─── Leads ────────────────────────────────────────────────────────────────────
+
+model Lead {
+  id                   String     @id @default(cuid())
+  title                String
+  status               LeadStatus @default(NEW_REQUEST)
+  clientId             String?
+  client               Client?    @relation(fields: [clientId], references: [id])
+  contactName          String?
+  contactEmail         String?
+  contactPhone         String?
+  companyName          String?
+  description          String?
+  source               String?
+  estimatedValue       Decimal?   @db.Decimal(10, 2)
+  notes                String?
+  createdById          String
+  createdBy            User       @relation("CreatedLeads", fields: [createdById], references: [id])
+  assignedToId         String?
+  convertedToProjectId String?    @unique
+  convertedToProject   Project?   @relation("ConvertedFromLead")
+  createdAt            DateTime   @default(now())
+  updatedAt            DateTime   @updatedAt
+  deletedAt            DateTime?
+
+  statusHistory StatusHistory[]
+  activityLogs  ActivityLog[]
+}
+
+enum LeadStatus {
+  NEW_REQUEST
+  INTAKE_IN_PROGRESS
+  INTAKE_COMPLETE
+  DEMO_SCHEDULED
+  DEMO_IN_PROGRESS
+  DEMO_50_READY
+  WAITING_FOR_RESPONSE
+  APPROVAL_RECEIVED
+  REJECTED
+  WAITING_FOR_PAYMENT
+  PAID
+  CONVERTED_TO_PROJECT
+}
+
+// ─── Projects ─────────────────────────────────────────────────────────────────
+
+model Project {
+  id                 String         @id @default(cuid())
+  title              String
+  description        String?
+  status             ProjectStatus  @default(KICKOFF)
+  packageType        PackageType    @default(BASIS)
+  clientId           String
+  client             Client         @relation(fields: [clientId], references: [id])
+  leadId             String?        @unique
+  lead               Lead?          @relation("ConvertedFromLead", fields: [leadId], references: [convertedToProjectId])
+  createdById        String
+  createdBy          User           @relation("CreatedProjects", fields: [createdById], references: [id])
+  assignedToId       String?
+  approvalStatus     ApprovalStatus @default(PENDING)
+  paymentStatus      PaymentStatus  @default(UNPAID)
+  feedbackRoundsUsed Int            @default(0)
+  startDate          DateTime?
+  targetDeadline     DateTime?
+  goLiveDate         DateTime?
+  deliverables       String[]
+  notes              String?
+  isActive           Boolean        @default(true)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  deletedAt          DateTime?
+
+  tickets        Ticket[]
+  feedbackRounds FeedbackRound[]
+  statusHistory  StatusHistory[]
+  activityLogs   ActivityLog[]
+}
+
+enum ProjectStatus {
+  KICKOFF
+  IN_DEVELOPMENT
+  WAITING_FOR_INPUT
+  FEEDBACK_RECEIVED
+  FEEDBACK_ROUND_1
+  FEEDBACK_ROUND_2
+  FEEDBACK_ROUND_3
+  FEEDBACK_ROUND_4
+  REVISION_IN_PROGRESS
+  READY_FOR_DELIVERY
+  GO_LIVE_SCHEDULED
+  LIVE
+  HANDED_OVER
+  COMPLETED
+  ON_HOLD
+  CANCELLED
+}
+
+enum PackageType {
+  BASIS
+  PREMIUM
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CHANGES_REQUESTED
+}
+
+enum PaymentStatus {
+  UNPAID
+  INVOICE_SENT
+  PARTIALLY_PAID
+  PAID
+  OVERDUE
+  REFUNDED
+}
+
+// ─── Tickets ──────────────────────────────────────────────────────────────────
+
+model Ticket {
+  id             String       @id @default(cuid())
+  title          String
+  description    String?
+  status         TicketStatus @default(OPEN)
+  priority       Priority     @default(MEDIUM)
+  type           TicketType   @default(TASK)
+  projectId      String?
+  project        Project?     @relation(fields: [projectId], references: [id])
+  assignedToId   String?
+  assignedTo     User?        @relation("AssignedTickets", fields: [assignedToId], references: [id])
+  labels         String[]
+  dueDate        DateTime?
+  estimatedHours Decimal?     @db.Decimal(6, 2)
+  isExtraWork    Boolean      @default(false)
+  createdById    String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+
+  comments      TicketComment[]
+  attachments   Attachment[]
+  statusHistory StatusHistory[]
+  activityLogs  ActivityLog[]
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  WAITING_FOR_CLIENT
+  APPROVAL_PENDING
+  WAITING_FOR_PAYMENT
+  FEEDBACK_REQUESTED
+  IN_REVIEW
+  DONE
+  CANCELLED
+  ON_HOLD
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TicketType {
+  TASK
+  BUG
+  FEEDBACK
+  FEATURE
+  QUESTION
+  INTAKE
+}
+
+// ─── Feedback Rounds ──────────────────────────────────────────────────────────
+
+model FeedbackRound {
+  id          String              @id @default(cuid())
+  projectId   String
+  project     Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  roundNumber Int
+  status      FeedbackRoundStatus @default(OPEN)
+  notes       String?
+  isExtraWork Boolean             @default(false)
+  openedAt    DateTime            @default(now())
+  closedAt    DateTime?
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+enum FeedbackRoundStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+  EXTRA_WORK
+}
+
+// ─── Comments ─────────────────────────────────────────────────────────────────
+
+model TicketComment {
+  id         String    @id @default(cuid())
+  ticketId   String
+  ticket     Ticket    @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  authorId   String
+  author     User      @relation(fields: [authorId], references: [id])
+  body       String
+  isInternal Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  deletedAt  DateTime?
+
+  attachments Attachment[]
+}
+
+// ─── Attachments ──────────────────────────────────────────────────────────────
+
+model Attachment {
+  id           String         @id @default(cuid())
+  filename     String
+  storagePath  String
+  mimeType     String
+  sizeBytes    Int
+  ticketId     String?
+  ticket       Ticket?        @relation(fields: [ticketId], references: [id])
+  commentId    String?
+  comment      TicketComment? @relation(fields: [commentId], references: [id])
+  uploadedById String
+  createdAt    DateTime       @default(now())
+}
+
+// ─── Status History ───────────────────────────────────────────────────────────
+
+model StatusHistory {
+  id          String   @id @default(cuid())
+  entityType  String
+  entityId    String
+  fromStatus  String?
+  toStatus    String
+  changedById String
+  reason      String?
+  createdAt   DateTime @default(now())
+
+  lead    Lead?    @relation(fields: [entityId], references: [id], map: "status_history_lead")
+  project Project? @relation(fields: [entityId], references: [id], map: "status_history_project")
+  ticket  Ticket?  @relation(fields: [entityId], references: [id], map: "status_history_ticket")
+}
+
+// ─── Audit / Activity Log ─────────────────────────────────────────────────────
+
+model ActivityLog {
+  id         String   @id @default(cuid())
+  entityType String
+  entityId   String
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String
+  metadata   Json?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  lead    Lead?    @relation(fields: [entityId], references: [id], map: "activity_log_lead")
+  project Project? @relation(fields: [entityId], references: [id], map: "activity_log_project")
+  ticket  Ticket?  @relation(fields: [entityId], references: [id], map: "activity_log_ticket")
+}
+
+// ─── Notifications ────────────────────────────────────────────────────────────
+
+model Notification {
+  id         String           @id @default(cuid())
+  userId     String
+  user       User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       NotificationType
+  title      String
+  body       String?
+  entityType String?
+  entityId   String?
+  isRead     Boolean          @default(false)
+  readAt     DateTime?
+  createdAt  DateTime         @default(now())
+}
+
+enum NotificationType {
+  NEW_LEAD
+  NEW_TICKET
+  TICKET_ASSIGNED
+  STATUS_CHANGED
+  FEEDBACK_RECEIVED
+  APPROVAL_RECEIVED
+  PAYMENT_STATUS_CHANGED
+  DEADLINE_APPROACHING
+  PROJECT_COMPLETED
+  COMMENT_ADDED
+  FEEDBACK_ROUND_EXCEEDED
+}
