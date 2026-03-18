@@ -5,7 +5,7 @@ import { formatDistanceToNow } from 'date-fns'
 
 type TimelineEntry = {
   id: string
-  type: 'NOTE' | 'SYSTEM_EVENT' | 'STATUS_CHANGE' | 'ASSIGNMENT' | 'REFERENCE_ADDED' | 'WIKI_LINKED'
+  type: 'NOTE' | 'SYSTEM_EVENT' | 'STATUS_CHANGE' | 'ASSIGNMENT' | 'REFERENCE_ADDED' | 'REFERENCE_REMOVED' | 'WIKI_LINKED' | 'WIKI_UNLINKED' | 'COMMUNICATION_LINKED'
   content: string | null
   metadata: Record<string, unknown> | null
   createdAt: string
@@ -18,7 +18,10 @@ const TYPE_ICONS: Record<string, string> = {
   STATUS_CHANGE: '🔄',
   ASSIGNMENT: '👤',
   REFERENCE_ADDED: '🔗',
+  REFERENCE_REMOVED: '🧹',
   WIKI_LINKED: '📚',
+  WIKI_UNLINKED: '📤',
+  COMMUNICATION_LINKED: '📨',
 }
 
 const TYPE_LABELS: Record<string, string> = {
@@ -27,7 +30,10 @@ const TYPE_LABELS: Record<string, string> = {
   STATUS_CHANGE: 'Status changed',
   ASSIGNMENT: 'Assignment changed',
   REFERENCE_ADDED: 'Reference added',
+  REFERENCE_REMOVED: 'Reference removed',
   WIKI_LINKED: 'Wiki page linked',
+  WIKI_UNLINKED: 'Wiki page unlinked',
+  COMMUNICATION_LINKED: 'Communication added',
 }
 
 function SystemEntryContent({ entry }: { entry: TimelineEntry }) {
@@ -74,6 +80,18 @@ function SystemEntryContent({ entry }: { entry: TimelineEntry }) {
     )
   }
 
+  if (entry.type === 'WIKI_UNLINKED') {
+    return <p className="text-sm text-gray-600">Wiki page unlinked: <span className="font-medium text-gray-800">{String(meta.title ?? 'Wiki page')}</span></p>
+  }
+
+  if (entry.type === 'REFERENCE_REMOVED') {
+    return <p className="text-sm text-gray-600">Reference removed: <span className="font-medium text-gray-800">{String(meta.title ?? 'Reference')}</span></p>
+  }
+
+  if (entry.type === 'COMMUNICATION_LINKED') {
+    return <p className="text-sm text-gray-600">Communication added via <span className="font-medium text-gray-800">{String(meta.channel ?? 'channel')}</span></p>
+  }
+
   return <p className="text-sm text-gray-600">{entry.content ?? 'System event'}</p>
 }
 
@@ -88,15 +106,19 @@ export function TimelineTab({ ticketId, currentUserId, currentUserRole }: {
   const [submitting, setSubmitting] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
   const isAdmin = currentUserRole === 'SUPER_ADMIN' || currentUserRole === 'ADMIN'
 
   async function load() {
     setLoading(true)
+    setError(null)
     const res = await fetch(`/api/v1/tickets/${ticketId}/timeline?limit=100`)
     if (res.ok) {
       const json = await res.json()
-      setEntries(json.data ?? [])
+      setEntries(json.data?.data ?? [])
+    } else {
+      setError('Failed to load timeline')
     }
     setLoading(false)
   }
@@ -106,6 +128,7 @@ export function TimelineTab({ ticketId, currentUserId, currentUserRole }: {
   async function submitNote() {
     if (!noteText.trim()) return
     setSubmitting(true)
+    setError(null)
     const res = await fetch(`/api/v1/tickets/${ticketId}/timeline`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -114,6 +137,9 @@ export function TimelineTab({ ticketId, currentUserId, currentUserRole }: {
     if (res.ok) {
       setNoteText('')
       await load()
+    } else {
+      const json = await res.json().catch(() => null)
+      setError(json?.error ?? 'Failed to add note')
     }
     setSubmitting(false)
   }
@@ -157,6 +183,8 @@ export function TimelineTab({ ticketId, currentUserId, currentUserRole }: {
           </button>
         </div>
       </div>
+
+      {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
       {/* Timeline entries */}
       {loading ? (

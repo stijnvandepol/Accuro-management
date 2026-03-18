@@ -19,6 +19,7 @@ describe('hasPermission', () => {
   it('DEVELOPER has tickets:read but not tickets:delete', () => {
     expect(hasPermission('DEVELOPER', 'tickets:read')).toBe(true)
     expect(hasPermission('DEVELOPER', 'tickets:delete')).toBe(false)
+    expect(hasPermission('DEVELOPER', 'tickets:archive')).toBe(false)
   })
 
   it('DEVELOPER cannot access users or settings', () => {
@@ -36,6 +37,8 @@ describe('hasPermission', () => {
 
   it('PROJECT_MANAGER can assign tickets', () => {
     expect(hasPermission('PROJECT_MANAGER', 'tickets:assign')).toBe(true)
+    expect(hasPermission('PROJECT_MANAGER', 'tickets:archive')).toBe(true)
+    expect(hasPermission('PROJECT_MANAGER', 'tickets:restore')).toBe(true)
   })
 
   it('ADMIN does not have users:delete', () => {

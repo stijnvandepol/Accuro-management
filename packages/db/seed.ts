@@ -7,8 +7,13 @@
 
 import { PrismaClient } from '@prisma/client'
 import bcrypt from 'bcryptjs'
+import crypto from 'crypto'
 
 const db = new PrismaClient()
+
+function ticketNumber() {
+  return `TCK-${new Date().getUTCFullYear()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`
+}
 
 async function main() {
   const email = process.env.SEED_ADMIN_EMAIL ?? 'admin@example.com'
@@ -85,11 +90,16 @@ async function main() {
   const tickets = await Promise.all([
     db.ticket.create({
       data: {
+        ticketNumber: ticketNumber(),
         title: 'Setup WordPress with Elementor',
         description: 'Install and configure WordPress with Elementor Pro theme builder',
         status: 'DONE',
         priority: 'HIGH',
         type: 'TASK',
+        source: 'MANUAL',
+        approvalStatus: 'NOT_REQUIRED',
+        paymentStatus: 'NOT_APPLICABLE',
+        clientId: client.id,
         projectId: project.id,
         createdById: user.id,
         assignedToId: user.id,
@@ -97,11 +107,16 @@ async function main() {
     }),
     db.ticket.create({
       data: {
+        ticketNumber: ticketNumber(),
         title: 'Design homepage layout',
         description: 'Create the homepage layout based on client brief',
         status: 'IN_PROGRESS',
         priority: 'HIGH',
         type: 'TASK',
+        source: 'MANUAL',
+        approvalStatus: 'NOT_REQUIRED',
+        paymentStatus: 'NOT_APPLICABLE',
+        clientId: client.id,
         projectId: project.id,
         createdById: user.id,
         assignedToId: user.id,
@@ -109,11 +124,16 @@ async function main() {
     }),
     db.ticket.create({
       data: {
+        ticketNumber: ticketNumber(),
         title: 'Client requests logo change',
         description: 'Client wants to use new brand logo version',
         status: 'WAITING_FOR_CLIENT',
         priority: 'MEDIUM',
         type: 'FEEDBACK',
+        source: 'MANUAL',
+        approvalStatus: 'PENDING',
+        paymentStatus: 'NOT_APPLICABLE',
+        clientId: client.id,
         projectId: project.id,
         createdById: user.id,
       },

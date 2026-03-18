@@ -5,6 +5,8 @@ import {
   ok, created, notFound,
   requireAuth, isAuthContext, requirePermission, parseBody, withErrorHandler,
 } from '@/lib/api-helpers'
+import { buildTicketScopeWhere } from '@/lib/ticket-policy'
+import { logActivity } from '@/lib/audit'
 
 const CreateNoteSchema = z.object({
   content: z.string().min(1).max(10000),
@@ -23,7 +25,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: { param
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100)
   const type = searchParams.get('type')
 
-  const ticket = await db.ticket.findUnique({ where: { id: ticketId, deletedAt: null } })
+  const ticket = await db.ticket.findFirst({ where: buildTicketScopeWhere(auth, { id: ticketId }) })
   if (!ticket) return notFound('Ticket')
 
   const entries = await db.ticketTimelineEntry.findMany({
@@ -63,7 +65,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: { para
   const body = await parseBody(req, CreateNoteSchema)
   if (body instanceof Response) return body
 
-  const ticket = await db.ticket.findUnique({ where: { id: ticketId, deletedAt: null } })
+  const ticket = await db.ticket.findFirst({ where: buildTicketScopeWhere(auth, { id: ticketId }) })
   if (!ticket) return notFound('Ticket')
 
   const entry = await db.ticketTimelineEntry.create({
@@ -76,6 +78,15 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: { para
     include: {
       author: { select: { id: true, name: true, email: true, role: true } },
     },
+  })
+
+  await logActivity({
+    entityType: 'ticket',
+    entityId: ticketId,
+    userId: auth.userId,
+    action: 'timeline_note_created',
+    metadata: { timelineEntryId: entry.id },
+    req,
   })
 
   return created(entry)

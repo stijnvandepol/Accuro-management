@@ -26,7 +26,7 @@ function redact(ctx: LogContext): LogContext {
   const out: LogContext = {}
   for (const [k, v] of Object.entries(ctx)) {
     // Never log these keys regardless of value
-    if (/password|hash|secret|token|key/i.test(k)) {
+    if (/password|hash|secret|token|key|authorization|cookie|signature/i.test(k)) {
       out[k] = '[REDACTED]'
     } else {
       out[k] = v

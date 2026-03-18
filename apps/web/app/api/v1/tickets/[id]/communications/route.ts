@@ -2,9 +2,12 @@ import { type NextRequest } from 'next/server'
 import { z } from 'zod'
 import db from '@/lib/db'
 import {
-  ok, created, notFound,
+  ok, created, notFound, conflict,
   requireAuth, isAuthContext, requirePermission, parseBody, withErrorHandler,
 } from '@/lib/api-helpers'
+import { buildTicketScopeWhere } from '@/lib/ticket-policy'
+import { logActivity } from '@/lib/audit'
+import { logCommunicationLinked } from '@/lib/timeline'
 
 const CreateCommSchema = z.object({
   direction: z.enum(['INCOMING', 'OUTGOING']),
@@ -27,7 +30,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: { param
   const cursor = searchParams.get('cursor')
   const limit = Math.min(parseInt(searchParams.get('limit') ?? '50'), 100)
 
-  const ticket = await db.ticket.findUnique({ where: { id: ticketId, deletedAt: null } })
+  const ticket = await db.ticket.findFirst({ where: buildTicketScopeWhere(auth, { id: ticketId }) })
   if (!ticket) return notFound('Ticket')
 
   const entries = await db.communicationEntry.findMany({
@@ -63,7 +66,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: { para
   const body = await parseBody(req, CreateCommSchema)
   if (body instanceof Response) return body
 
-  const ticket = await db.ticket.findUnique({ where: { id: ticketId, deletedAt: null } })
+  const ticket = await db.ticket.findFirst({ where: buildTicketScopeWhere(auth, { id: ticketId }) })
   if (!ticket) return notFound('Ticket')
 
   // Idempotency: prevent duplicate by externalMessageId
@@ -71,7 +74,12 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: { para
     const existing = await db.communicationEntry.findUnique({
       where: { externalMessageId: body.externalMessageId },
     })
-    if (existing) return ok(existing)
+    if (existing) {
+      if (existing.ticketId !== ticketId) {
+        return conflict('Communication message ID already linked to another ticket')
+      }
+      return ok(existing)
+    }
   }
 
   const entry = await db.communicationEntry.create({
@@ -84,11 +92,32 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: { para
       externalSender: body.externalSender,
       authorId: auth.userId,
       externalMessageId: body.externalMessageId,
+      isImmutable: Boolean(body.externalMessageId),
     },
     include: {
       author: { select: { id: true, name: true, email: true } },
     },
   })
+
+  await Promise.all([
+    logActivity({
+      entityType: 'ticket',
+      entityId: ticketId,
+      userId: auth.userId,
+      action: 'communication_created',
+      metadata: { communicationId: entry.id, channel: entry.channel, direction: entry.direction },
+      req,
+    }),
+    logCommunicationLinked({
+      ticketId,
+      authorId: auth.userId,
+      communicationId: entry.id,
+      direction: entry.direction,
+      channel: entry.channel,
+      subject: entry.subject,
+      externalSender: entry.externalSender,
+    }),
+  ])
 
   return created(entry)
 })

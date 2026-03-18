@@ -42,13 +42,17 @@ export function CommunicationsTab({ ticketId }: { ticketId: string }) {
     externalSender: '',
   })
   const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   async function load() {
     setLoading(true)
+    setError(null)
     const res = await fetch(`/api/v1/tickets/${ticketId}/communications?limit=50`)
     if (res.ok) {
       const json = await res.json()
-      setEntries(json.data ?? [])
+      setEntries(json.data?.data ?? [])
+    } else {
+      setError('Failed to load communications')
     }
     setLoading(false)
   }
@@ -58,6 +62,7 @@ export function CommunicationsTab({ ticketId }: { ticketId: string }) {
   async function submit() {
     if (!form.body.trim()) return
     setSubmitting(true)
+    setError(null)
     const res = await fetch(`/api/v1/tickets/${ticketId}/communications`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -67,6 +72,9 @@ export function CommunicationsTab({ ticketId }: { ticketId: string }) {
       setShowForm(false)
       setForm({ direction: 'INCOMING', channel: 'EMAIL', subject: '', body: '', externalSender: '' })
       await load()
+    } else {
+      const json = await res.json().catch(() => null)
+      setError(json?.error ?? 'Failed to save communication')
     }
     setSubmitting(false)
   }
@@ -82,6 +90,8 @@ export function CommunicationsTab({ ticketId }: { ticketId: string }) {
           + Add entry
         </button>
       </div>
+
+      {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
       {showForm && (
         <div className="bg-white rounded-xl border border-gray-200 p-4 space-y-3">
@@ -117,6 +127,15 @@ export function CommunicationsTab({ ticketId }: { ticketId: string }) {
               placeholder="Optional subject"
               value={form.subject}
               onChange={(e) => setForm({ ...form, subject: e.target.value })}
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-600 mb-1">External sender</label>
+            <input
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm"
+              placeholder="Optional sender or contact"
+              value={form.externalSender}
+              onChange={(e) => setForm({ ...form, externalSender: e.target.value })}
             />
           </div>
           <div>

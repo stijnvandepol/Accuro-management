@@ -190,19 +190,45 @@ export function paginationMeta(total: number, page: number, limit: number) {
   }
 }
 
+function getRequestId(value: unknown): string | undefined {
+  if (!value || typeof value !== 'object' || !('headers' in value)) return undefined
+  const req = value as NextRequest
+  return req.headers.get('x-request-id') ?? undefined
+}
+
 // ─── Handler wrapper ──────────────────────────────────────────────────────────
 
 export function withErrorHandler<T extends unknown[]>(
   handler: (...args: T) => Promise<NextResponse>
 ): (...args: T) => Promise<NextResponse> {
   return async (...args: T) => {
+    const startedAt = Date.now()
+    const req = args[0] instanceof NextRequest ? args[0] : undefined
+    const requestId = getRequestId(req)
     try {
-      return await handler(...args)
+      const response = await handler(...args)
+      if (requestId) response.headers.set('x-request-id', requestId)
+      if (req) {
+        logger.info('API request completed', {
+          requestId,
+          method: req.method,
+          path: req.nextUrl.pathname,
+          statusCode: response.status,
+          durationMs: Date.now() - startedAt,
+        })
+      }
+      return response
     } catch (error) {
       logger.error('Unhandled error in API route', {
+        requestId,
+        method: req?.method,
+        path: req?.nextUrl.pathname,
+        durationMs: Date.now() - startedAt,
         error: error instanceof Error ? error.message : String(error),
       })
-      return serverError()
+      const response = serverError()
+      if (requestId) response.headers.set('x-request-id', requestId)
+      return response
     }
   }
 }

@@ -19,6 +19,7 @@ import { validateCallbackSignature } from '@/lib/agent-callback-auth'
 import { createTimelineEntry } from '@/lib/timeline'
 import { logActivity } from '@/lib/audit'
 import { logger } from '@/lib/logger'
+import { isTicketDevelopmentFeaturesEnabled } from '@/lib/feature-flags'
 
 const CallbackSchema = z.object({
   runId:         z.string().min(1),
@@ -35,6 +36,10 @@ const CallbackSchema = z.object({
 })
 
 export const POST = async (req: NextRequest): Promise<NextResponse> => {
+  if (!isTicketDevelopmentFeaturesEnabled()) {
+    return NextResponse.json({ success: false, error: 'Not found' }, { status: 404 })
+  }
+
   // Read raw body first — needed for signature validation before parsing.
   let rawBody: string
   try {

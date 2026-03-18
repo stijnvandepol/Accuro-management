@@ -14,9 +14,18 @@ import { describe, it, expect, beforeAll } from 'vitest'
 process.env.JWT_SECRET = 'test-jwt-secret-that-is-at-least-32-chars'
 process.env.REFRESH_TOKEN_SECRET = 'test-refresh-secret-32-chars-xxxxxx'
 
-// Dynamically import after env vars are set
-const { signAccessToken, verifyAccessToken, signRefreshToken, verifyRefreshToken } =
-  await import('../lib/auth')
+let signAccessToken: typeof import('../lib/auth').signAccessToken
+let verifyAccessToken: typeof import('../lib/auth').verifyAccessToken
+let signRefreshToken: typeof import('../lib/auth').signRefreshToken
+let verifyRefreshToken: typeof import('../lib/auth').verifyRefreshToken
+
+beforeAll(async () => {
+  const auth = await import('../lib/auth')
+  signAccessToken = auth.signAccessToken
+  verifyAccessToken = auth.verifyAccessToken
+  signRefreshToken = auth.signRefreshToken
+  verifyRefreshToken = auth.verifyRefreshToken
+})
 
 describe('signAccessToken / verifyAccessToken', () => {
   it('round-trips a valid payload', async () => {

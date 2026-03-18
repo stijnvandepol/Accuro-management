@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyAccessToken } from './lib/auth'
+import { verifyAccessTokenOnly } from './lib/access-token'
 
 // Public routes that don't require authentication
 const PUBLIC_PATHS = [
@@ -7,6 +7,8 @@ const PUBLIC_PATHS = [
   '/api/v1/auth/login',
   '/api/v1/auth/refresh',
   '/api/health',
+  '/api/health/live',
+  '/api/health/ready',
 ]
 
 // API routes that accept either JWT or API key (handled in route handlers)
@@ -14,10 +16,16 @@ const API_PREFIX = '/api/v1/'
 
 export async function middleware(req: NextRequest): Promise<NextResponse> {
   const { pathname } = req.nextUrl
+  const requestId = req.headers.get('x-request-id') ?? globalThis.crypto.randomUUID()
+
+  function withRequestId(response: NextResponse): NextResponse {
+    response.headers.set('x-request-id', requestId)
+    return response
+  }
 
   // Always allow public paths
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
-    return NextResponse.next()
+    return withRequestId(NextResponse.next())
   }
 
   // Allow static files and Next.js internals.
@@ -28,7 +36,7 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     pathname.startsWith('/favicon') ||
     /\.(ico|png|jpg|jpeg|gif|svg|webp|css|js|woff|woff2|ttf|otf|map)$/.test(pathname)
   ) {
-    return NextResponse.next()
+    return withRequestId(NextResponse.next())
   }
 
   // For API routes: check JWT cookie or API key header (actual auth done in route handlers)
@@ -37,11 +45,11 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
     const apiKey = req.headers.get('x-api-key')
 
     if (!accessToken && !apiKey) {
-      return NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 })
+      return withRequestId(NextResponse.json({ success: false, error: 'Unauthorized' }, { status: 401 }))
     }
 
     if (accessToken) {
-      const payload = await verifyAccessToken(accessToken)
+      const payload = await verifyAccessTokenOnly(accessToken)
       if (!payload) {
         // Token invalid — let client know to refresh
         return NextResponse.json(
@@ -51,7 +59,9 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
       }
     }
     // API key will be verified in the route handler itself
-    return NextResponse.next()
+    const requestHeaders = new Headers(req.headers)
+    requestHeaders.set('x-request-id', requestId)
+    return withRequestId(NextResponse.next({ request: { headers: requestHeaders } }))
   }
 
   // Dashboard routes: require JWT
@@ -60,16 +70,16 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   if (!accessToken) {
     const loginUrl = new URL('/login', req.url)
     loginUrl.searchParams.set('redirect', pathname)
-    return NextResponse.redirect(loginUrl)
+    return withRequestId(NextResponse.redirect(loginUrl))
   }
 
-  const payload = await verifyAccessToken(accessToken)
+  const payload = await verifyAccessTokenOnly(accessToken)
   if (!payload) {
     // Token expired — redirect to refresh or login
     const loginUrl = new URL('/login', req.url)
     loginUrl.searchParams.set('redirect', pathname)
     loginUrl.searchParams.set('reason', 'session_expired')
-    return NextResponse.redirect(loginUrl)
+    return withRequestId(NextResponse.redirect(loginUrl))
   }
 
   // Add user info to headers for server components
@@ -77,8 +87,9 @@ export async function middleware(req: NextRequest): Promise<NextResponse> {
   requestHeaders.set('x-user-id', payload.sub)
   requestHeaders.set('x-user-email', payload.email)
   requestHeaders.set('x-user-role', payload.role)
+  requestHeaders.set('x-request-id', requestId)
 
-  return NextResponse.next({ request: { headers: requestHeaders } })
+  return withRequestId(NextResponse.next({ request: { headers: requestHeaders } }))
 }
 
 export const config = {

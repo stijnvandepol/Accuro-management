@@ -5,6 +5,8 @@ import {
   ok, notFound, forbidden,
   requireAuth, isAuthContext, requirePermission, parseBody, withErrorHandler,
 } from '@/lib/api-helpers'
+import { logActivity } from '@/lib/audit'
+import { logReferenceRemoved } from '@/lib/timeline'
 
 const BLOCKED_PROTOCOLS = /^(javascript:|data:|vbscript:)/i
 
@@ -41,6 +43,15 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: { par
     include: { createdBy: { select: { id: true, name: true } } },
   })
 
+  await logActivity({
+    entityType: 'ticket',
+    entityId: updated.ticketId,
+    userId: auth.userId,
+    action: 'reference_updated',
+    metadata: { referenceId: updated.id },
+    req,
+  })
+
   return ok(updated)
 })
 
@@ -59,6 +70,23 @@ export const DELETE = withErrorHandler(async (req: NextRequest, { params }: { pa
   if (ref.createdById !== auth.userId && !isAdmin) return forbidden('Not your reference')
 
   await db.ticketReference.delete({ where: { id } })
+  await Promise.all([
+    logActivity({
+      entityType: 'ticket',
+      entityId: ref.ticketId,
+      userId: auth.userId,
+      action: 'reference_deleted',
+      metadata: { referenceId: ref.id, title: ref.title },
+      req,
+    }),
+    logReferenceRemoved({
+      ticketId: ref.ticketId,
+      authorId: auth.userId,
+      referenceId: ref.id,
+      title: ref.title,
+      url: ref.url,
+    }),
+  ])
 
   return ok({ success: true })
 })

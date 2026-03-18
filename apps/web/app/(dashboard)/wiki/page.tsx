@@ -27,7 +27,7 @@ export default function WikiPage() {
     const res = await fetch(`/api/v1/wiki/pages?${params}`)
     if (res.ok) {
       const json = await res.json()
-      setPages(json.data ?? [])
+      setPages(json.data?.data ?? [])
     }
     setLoading(false)
   }

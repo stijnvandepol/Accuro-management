@@ -15,6 +15,7 @@ import { logActivity } from '@/lib/audit'
 import { createTimelineEntry } from '@/lib/timeline'
 import { buildAgentContext, type AgentContextOptions } from '@/lib/agent-context'
 import { dispatchAgentRun } from '@/lib/agent-dispatch'
+import { isTicketDevelopmentFeaturesEnabled } from '@/lib/feature-flags'
 
 // Run types that only require agent:run permission (safe, read-oriented or low-risk writes)
 const STANDARD_RUN_TYPES = ['PLAN', 'CREATE_ISSUE', 'UPDATE_ISSUE', 'PREPARE_CHANGES', 'OPEN_PR_DRAFT'] as const
@@ -37,6 +38,7 @@ const CreateAgentRunSchema = z.object({
 type Params = { params: Promise<{ id: string }> }
 
 export const GET = withErrorHandler(async (req: NextRequest, { params }: Params) => {
+  if (!isTicketDevelopmentFeaturesEnabled()) return notFound('Development features disabled')
   const { id: ticketId } = await params
   const auth = await requireAuth(req)
   if (!isAuthContext(auth)) return auth
@@ -81,6 +83,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: Params)
 })
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: Params) => {
+  if (!isTicketDevelopmentFeaturesEnabled()) return notFound('Development features disabled')
   const { id: ticketId } = await params
   const auth = await requireAuth(req)
   if (!isAuthContext(auth)) return auth

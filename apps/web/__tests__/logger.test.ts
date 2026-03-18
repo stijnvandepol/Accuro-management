@@ -1,9 +1,14 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, beforeAll } from 'vitest'
 
 // Must run before logger module load to avoid process.stdout.write in test output
-process.env.NODE_ENV = 'test'
+;(process.env as Record<string, string | undefined>).NODE_ENV = 'test'
 
-const { logger } = await import('../lib/logger')
+let logger: typeof import('../lib/logger').logger
+
+beforeAll(async () => {
+  const mod = await import('../lib/logger')
+  logger = mod.logger
+})
 
 describe('logger', () => {
   beforeEach(() => {
@@ -23,7 +28,7 @@ describe('logger', () => {
   it('redacts password fields', () => {
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
     const origEnv = process.env.NODE_ENV
-    process.env.NODE_ENV = 'production'
+    ;(process.env as Record<string, string | undefined>).NODE_ENV = 'production'
 
     logger.info('test', { password: 'super_secret', userId: 'u1' })
 
@@ -33,28 +38,43 @@ describe('logger', () => {
     expect(written).not.toContain('super_secret')
     expect(written).toContain('u1')
 
-    process.env.NODE_ENV = origEnv
+    ;(process.env as Record<string, string | undefined>).NODE_ENV = origEnv
     writeSpy.mockRestore()
   })
 
   it('redacts token fields', () => {
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
     const origEnv = process.env.NODE_ENV
-    process.env.NODE_ENV = 'production'
+    ;(process.env as Record<string, string | undefined>).NODE_ENV = 'production'
 
     logger.info('test', { accessToken: 'jwt.token.here', userId: 'u2' })
 
     const written = writeSpy.mock.calls.map((c) => c[0]).join('')
     expect(written).not.toContain('jwt.token.here')
 
-    process.env.NODE_ENV = origEnv
+    ;(process.env as Record<string, string | undefined>).NODE_ENV = origEnv
+    writeSpy.mockRestore()
+  })
+
+  it('redacts cookie and signature fields', () => {
+    const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
+    const origEnv = process.env.NODE_ENV
+    ;(process.env as Record<string, string | undefined>).NODE_ENV = 'production'
+
+    logger.info('test', { cookie: 'access_token=secret', signature: 'hmac-value' })
+
+    const written = writeSpy.mock.calls.map((c) => c[0]).join('')
+    expect(written).not.toContain('access_token=secret')
+    expect(written).not.toContain('hmac-value')
+
+    ;(process.env as Record<string, string | undefined>).NODE_ENV = origEnv
     writeSpy.mockRestore()
   })
 
   it('does not redact non-sensitive fields', () => {
     const writeSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true)
     const origEnv = process.env.NODE_ENV
-    process.env.NODE_ENV = 'production'
+    ;(process.env as Record<string, string | undefined>).NODE_ENV = 'production'
 
     logger.info('test', { entityId: 'ticket_123', action: 'created' })
 
@@ -62,7 +82,7 @@ describe('logger', () => {
     expect(written).toContain('ticket_123')
     expect(written).toContain('created')
 
-    process.env.NODE_ENV = origEnv
+    ;(process.env as Record<string, string | undefined>).NODE_ENV = origEnv
     writeSpy.mockRestore()
   })
 })

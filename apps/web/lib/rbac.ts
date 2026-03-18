@@ -20,6 +20,8 @@ export type Permission =
   | 'tickets:write'
   | 'tickets:delete'
   | 'tickets:assign'
+  | 'tickets:archive'
+  | 'tickets:restore'
   // Users
   | 'users:read'
   | 'users:write'
@@ -59,7 +61,7 @@ export const ALL_PERMISSIONS: readonly Permission[] = [
   'leads:read', 'leads:write', 'leads:delete', 'leads:convert',
   'clients:read', 'clients:write', 'clients:delete',
   'projects:read', 'projects:write', 'projects:delete', 'projects:manage',
-  'tickets:read', 'tickets:write', 'tickets:delete', 'tickets:assign',
+  'tickets:read', 'tickets:write', 'tickets:delete', 'tickets:assign', 'tickets:archive', 'tickets:restore',
   'users:read', 'users:write', 'users:delete',
   'settings:read', 'settings:write',
   'api_keys:read', 'api_keys:write', 'api_keys:delete',
@@ -91,6 +93,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[] | ['*']> = {
     'tickets:write',
     'tickets:delete',
     'tickets:assign',
+    'tickets:archive',
+    'tickets:restore',
     'users:read',
     'users:write',
     'settings:read',
@@ -130,6 +134,8 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[] | ['*']> = {
     'tickets:read',
     'tickets:write',
     'tickets:assign',
+    'tickets:archive',
+    'tickets:restore',
     'notifications:read',
     'reports:read',
     'timeline:read',

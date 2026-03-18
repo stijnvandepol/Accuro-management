@@ -8,10 +8,12 @@ import {
   ok, notFound,
   requireAuth, isAuthContext, requirePermission, withErrorHandler,
 } from '@/lib/api-helpers'
+import { isTicketDevelopmentFeaturesEnabled } from '@/lib/feature-flags'
 
 type Params = { params: Promise<{ id: string }> }
 
 export const GET = withErrorHandler(async (req: NextRequest, { params }: Params) => {
+  if (!isTicketDevelopmentFeaturesEnabled()) return notFound('Development features disabled')
   const { id } = await params
   const auth = await requireAuth(req)
   if (!isAuthContext(auth)) return auth

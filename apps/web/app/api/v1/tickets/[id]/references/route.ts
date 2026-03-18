@@ -6,6 +6,8 @@ import {
   requireAuth, isAuthContext, requirePermission, parseBody, withErrorHandler,
 } from '@/lib/api-helpers'
 import { logReferenceAdded } from '@/lib/timeline'
+import { buildTicketScopeWhere } from '@/lib/ticket-policy'
+import { logActivity } from '@/lib/audit'
 
 const BLOCKED_PROTOCOLS = /^(javascript:|data:|vbscript:)/i
 
@@ -27,7 +29,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: { param
   if (permErr) return permErr
 
   const { id: ticketId } = await params
-  const ticket = await db.ticket.findUnique({ where: { id: ticketId, deletedAt: null } })
+  const ticket = await db.ticket.findFirst({ where: buildTicketScopeWhere(auth, { id: ticketId }) })
   if (!ticket) return notFound('Ticket')
 
   const references = await db.ticketReference.findMany({
@@ -50,7 +52,7 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: { para
   const body = await parseBody(req, CreateReferenceSchema)
   if (body instanceof Response) return body
 
-  const ticket = await db.ticket.findUnique({ where: { id: ticketId, deletedAt: null } })
+  const ticket = await db.ticket.findFirst({ where: buildTicketScopeWhere(auth, { id: ticketId }) })
   if (!ticket) return notFound('Ticket')
 
   const reference = await db.ticketReference.create({
@@ -72,6 +74,14 @@ export const POST = withErrorHandler(async (req: NextRequest, { params }: { para
     referenceId: reference.id,
     title: reference.title,
     url: reference.url,
+  })
+  await logActivity({
+    entityType: 'ticket',
+    entityId: ticketId,
+    userId: auth.userId,
+    action: 'reference_created',
+    metadata: { referenceId: reference.id, type: reference.type },
+    req,
   })
 
   return created(reference)

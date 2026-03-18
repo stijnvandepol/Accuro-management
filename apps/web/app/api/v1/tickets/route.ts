@@ -15,6 +15,10 @@ import {
 import { createTicketSchema } from '@/lib/validations/ticket'
 import { logActivity } from '@/lib/audit'
 import { notifyAdmins, notifyTicketAssigned } from '@/lib/notifications'
+import { buildTicketScopeWhere } from '@/lib/ticket-policy'
+import { generateTicketNumber } from '@/lib/ticket-number'
+import { createTimelineEntry } from '@/lib/timeline'
+import { validateTicketRelationships } from '@/lib/ticket-service'
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
   const auth = await requireAuth(req)
@@ -26,8 +30,12 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   const { searchParams } = req.nextUrl
   const { page, limit, skip } = parsePagination(searchParams)
   const projectId = searchParams.get('projectId')
+  const clientId = searchParams.get('clientId')
   const assignedToId = searchParams.get('assignedToId')
   const search = searchParams.get('search')
+  const includeArchived = searchParams.get('archived') === 'true'
+  const overdue = searchParams.get('overdue') === 'true'
+  const sort = searchParams.get('sort') ?? 'updatedAt_desc'
 
   // Validate enum query params upfront — pass bad values to Prisma returns a 400 not a 500.
   const TICKET_STATUSES = ['OPEN','IN_PROGRESS','WAITING_FOR_CLIENT','APPROVAL_PENDING',
@@ -53,19 +61,30 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
   // Developers only see their assigned tickets
   const isDeveloper = auth.role === 'DEVELOPER'
 
+  const sortMap: Record<string, { [key: string]: 'asc' | 'desc' }> = {
+    createdAt_desc: { createdAt: 'desc' },
+    createdAt_asc: { createdAt: 'asc' },
+    updatedAt_desc: { updatedAt: 'desc' },
+    dueDate_asc: { dueDate: 'asc' },
+    priority_desc: { priority: 'desc' },
+  }
+
   const where = {
-    deletedAt: null,
-    ...(isDeveloper ? { assignedToId: auth.userId } : {}),
+    ...buildTicketScopeWhere(auth, { includeArchived }),
     ...(status   ? { status }   : {}),
     ...(priority ? { priority } : {}),
+    ...(clientId ? { clientId } : {}),
     ...(projectId ? { projectId } : {}),
     ...(assignedToId && !isDeveloper ? { assignedToId } : {}),
     ...(type ? { type } : {}),
+    ...(overdue ? { dueDate: { lt: new Date() } } : {}),
     ...(search
       ? {
           OR: [
+            { ticketNumber: { contains: search, mode: 'insensitive' as const } },
             { title: { contains: search, mode: 'insensitive' as const } },
             { description: { contains: search, mode: 'insensitive' as const } },
+            { client: { name: { contains: search, mode: 'insensitive' as const } } },
           ],
         }
       : {}),
@@ -76,8 +95,9 @@ export const GET = withErrorHandler(async (req: NextRequest) => {
       where,
       skip,
       take: limit,
-      orderBy: [{ priority: 'desc' }, { createdAt: 'desc' }],
+      orderBy: [sortMap[sort] ?? sortMap.updatedAt_desc],
       include: {
+        client: { select: { id: true, name: true } },
         project: { select: { id: true, title: true, client: { select: { name: true } } } },
         assignedTo: { select: { id: true, name: true } },
         _count: { select: { comments: true } },
@@ -100,20 +120,31 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   if (body instanceof NextResponse) return body
   const data = body
 
+  const relations = await validateTicketRelationships(data)
+  if (!relations.ok) return badRequest(relations.message)
+
   const ticket = await db.ticket.create({
     data: {
+      ticketNumber: generateTicketNumber(),
       title: data.title,
       description: data.description,
-      projectId: data.projectId,
+      clientId: relations.data.clientId,
+      clientContactId: relations.data.clientContactId,
+      projectId: relations.data.projectId,
       priority: data.priority,
       type: data.type,
-      assignedToId: data.assignedToId,
+      category: data.category,
+      source: data.source,
+      assignedToId: relations.data.assignedToId,
       labels: data.labels,
       dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
       estimatedHours: data.estimatedHours,
+      approvalStatus: data.approvalStatus,
+      paymentStatus: data.paymentStatus,
       createdById: auth.userId,
     },
     include: {
+      client: { select: { id: true, name: true } },
       project: { select: { id: true, title: true } },
       assignedTo: { select: { id: true, name: true } },
     },
@@ -128,10 +159,16 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
       metadata: { title: ticket.title, priority: ticket.priority, type: ticket.type },
       req,
     }),
+    createTimelineEntry({
+      ticketId: ticket.id,
+      type: 'SYSTEM_EVENT',
+      authorId: auth.userId,
+      metadata: { action: 'ticket_created', ticketNumber: ticket.ticketNumber },
+    }),
     notifyAdmins(
       {
         type: 'NEW_TICKET',
-        title: `New ticket: ${ticket.title}`,
+        title: `New ticket: ${ticket.ticketNumber} ${ticket.title}`,
         entityType: 'ticket',
         entityId: ticket.id,
       },
@@ -139,8 +176,8 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     ),
   ]
 
-  if (data.assignedToId && data.assignedToId !== auth.userId) {
-    tasks.push(notifyTicketAssigned(ticket.id, ticket.title, data.assignedToId))
+  if (relations.data.assignedToId && relations.data.assignedToId !== auth.userId) {
+    tasks.push(notifyTicketAssigned(ticket.id, ticket.title, relations.data.assignedToId))
   }
 
   await Promise.all(tasks)

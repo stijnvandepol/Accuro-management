@@ -10,12 +10,14 @@ import {
 } from '@/lib/api-helpers'
 import { logActivity } from '@/lib/audit'
 import { createTimelineEntry } from '@/lib/timeline'
+import { isTicketDevelopmentFeaturesEnabled } from '@/lib/feature-flags'
 
 const CANCELLABLE_STATUSES = ['PENDING', 'QUEUED', 'RUNNING'] as const
 
 type Params = { params: Promise<{ id: string }> }
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: Params) => {
+  if (!isTicketDevelopmentFeaturesEnabled()) return notFound('Development features disabled')
   const { id } = await params
   const auth = await requireAuth(req)
   if (!isAuthContext(auth)) return auth

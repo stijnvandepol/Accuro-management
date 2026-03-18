@@ -11,6 +11,7 @@ import {
   requireAuth, isAuthContext, requirePermission, parseBody, withErrorHandler,
 } from '@/lib/api-helpers'
 import { logActivity } from '@/lib/audit'
+import { isTicketDevelopmentFeaturesEnabled } from '@/lib/feature-flags'
 
 const UpdateRepoLinkSchema = z.object({
   repoName:               z.string().min(1).max(100).regex(/^[a-zA-Z0-9_.-]+$/).nullable().optional(),
@@ -23,6 +24,7 @@ const UpdateRepoLinkSchema = z.object({
 type Params = { params: Promise<{ id: string }> }
 
 export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Params) => {
+  if (!isTicketDevelopmentFeaturesEnabled()) return notFound('Development features disabled')
   const { id } = await params
   const auth = await requireAuth(req)
   if (!isAuthContext(auth)) return auth
@@ -67,6 +69,7 @@ export const PATCH = withErrorHandler(async (req: NextRequest, { params }: Param
 })
 
 export const DELETE = withErrorHandler(async (req: NextRequest, { params }: Params) => {
+  if (!isTicketDevelopmentFeaturesEnabled()) return notFound('Development features disabled')
   const { id } = await params
   const auth = await requireAuth(req)
   if (!isAuthContext(auth)) return auth

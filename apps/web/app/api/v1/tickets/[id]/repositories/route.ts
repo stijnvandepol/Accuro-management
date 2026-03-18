@@ -13,6 +13,7 @@ import {
 import { logActivity } from '@/lib/audit'
 import { createTimelineEntry } from '@/lib/timeline'
 import { isOrgLevel, resolveRepoName } from '@/lib/github-token'
+import { isTicketDevelopmentFeaturesEnabled } from '@/lib/feature-flags'
 
 const LinkRepoSchema = z.object({
   githubConnectionId:      z.string().min(1),
@@ -27,6 +28,7 @@ const LinkRepoSchema = z.object({
 type Params = { params: Promise<{ id: string }> }
 
 export const GET = withErrorHandler(async (req: NextRequest, { params }: Params) => {
+  if (!isTicketDevelopmentFeaturesEnabled()) return notFound('Development features disabled')
   const { id: ticketId } = await params
   const auth = await requireAuth(req)
   if (!isAuthContext(auth)) return auth
@@ -57,6 +59,7 @@ export const GET = withErrorHandler(async (req: NextRequest, { params }: Params)
 })
 
 export const POST = withErrorHandler(async (req: NextRequest, { params }: Params) => {
+  if (!isTicketDevelopmentFeaturesEnabled()) return notFound('Development features disabled')
   const { id: ticketId } = await params
   const auth = await requireAuth(req)
   if (!isAuthContext(auth)) return auth

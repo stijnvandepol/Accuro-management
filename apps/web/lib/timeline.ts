@@ -71,6 +71,25 @@ export async function logReferenceAdded(params: {
   })
 }
 
+export async function logReferenceRemoved(params: {
+  ticketId: string
+  authorId: string
+  referenceId: string
+  title: string
+  url: string
+}) {
+  return createTimelineEntry({
+    ticketId: params.ticketId,
+    type: 'REFERENCE_REMOVED',
+    authorId: params.authorId,
+    metadata: {
+      referenceId: params.referenceId,
+      title: params.title,
+      url: params.url,
+    },
+  })
+}
+
 export async function logWikiLinked(params: {
   ticketId: string
   authorId: string
@@ -86,6 +105,48 @@ export async function logWikiLinked(params: {
       wikiPageId: params.wikiPageId,
       title: params.wikiPageTitle,
       slug: params.wikiPageSlug,
+    },
+  })
+}
+
+export async function logWikiUnlinked(params: {
+  ticketId: string
+  authorId: string
+  wikiPageId: string
+  wikiPageTitle: string
+  wikiPageSlug: string
+}) {
+  return createTimelineEntry({
+    ticketId: params.ticketId,
+    type: 'WIKI_UNLINKED',
+    authorId: params.authorId,
+    metadata: {
+      wikiPageId: params.wikiPageId,
+      title: params.wikiPageTitle,
+      slug: params.wikiPageSlug,
+    },
+  })
+}
+
+export async function logCommunicationLinked(params: {
+  ticketId: string
+  authorId?: string
+  communicationId: string
+  direction: string
+  channel: string
+  subject?: string | null
+  externalSender?: string | null
+}) {
+  return createTimelineEntry({
+    ticketId: params.ticketId,
+    type: 'COMMUNICATION_LINKED',
+    authorId: params.authorId,
+    metadata: {
+      communicationId: params.communicationId,
+      direction: params.direction,
+      channel: params.channel,
+      subject: params.subject ?? null,
+      externalSender: params.externalSender ?? null,
     },
   })
 }
