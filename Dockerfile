@@ -43,8 +43,8 @@ RUN addgroup --system --gid 1001 nodejs && \
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
-# Copy public assets if they exist (ignore error if dir doesn't exist)
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public 2>/dev/null || true
+# Copy public assets
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Copy Prisma client and schema (needed at runtime for Prisma operations)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
