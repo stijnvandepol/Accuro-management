@@ -115,20 +115,28 @@ cmd_setup() {
   docker compose build
   success "Image gebouwd"
 
-  # Stap 3: starten
+  # Stap 3: starten + database inrichten
   step "Stap 3 — Containers starten en database inrichten"
   docker compose up -d
   wait_healthy web || { warn "Web container nog niet healthy. Controleer: ./dev.sh logs"; }
 
   docker compose logs migrate 2>/dev/null | grep -E "sync|error|Error" | sed 's/^migrate-1  | /  /' || true
 
+  # Stap 4: admin account aanmaken
+  step "Stap 4 — Admin account aanmaken"
+  cmd_seed
+
   # Klaar
+  local admin_email admin_pass
+  admin_email=$(grep SEED_ADMIN_EMAIL .env | cut -d= -f2)
+  admin_pass=$(grep SEED_ADMIN_PASSWORD .env | cut -d= -f2)
   echo ""
   divider
   success "Installatie voltooid!"
   echo ""
   echo -e "  ${BOLD}Open de applicatie:${RESET}  http://localhost:3000"
-  echo -e "  ${BOLD}Inloggen met:${RESET}        het e-mailadres en wachtwoord uit .env"
+  echo -e "  ${BOLD}E-mail:${RESET}              ${admin_email}"
+  echo -e "  ${BOLD}Wachtwoord:${RESET}          ${admin_pass}"
   echo ""
   echo -e "  Volgende keer opstarten:  ${CYAN}./dev.sh start${RESET}"
   echo -e "  Stoppen:                  ${CYAN}./dev.sh stop${RESET}"
@@ -285,6 +293,52 @@ cmd_db() {
   docker exec -it webvakwerk-ticket-db-1 psql -U app -d app
 }
 
+# Admin gebruiker aanmaken via SEED_ADMIN_* in .env
+cmd_seed() {
+  ensure_env
+  local email pass name
+  email=$(grep SEED_ADMIN_EMAIL .env | cut -d= -f2)
+  pass=$(grep SEED_ADMIN_PASSWORD .env | cut -d= -f2)
+  name=$(grep SEED_ADMIN_NAME .env | cut -d= -f2 | tr -d '"')
+
+  if [[ -z "$email" || -z "$pass" ]]; then
+    warn "SEED_ADMIN_EMAIL of SEED_ADMIN_PASSWORD niet ingesteld in .env — overgeslagen"
+    return
+  fi
+
+  local result
+  result=$(docker exec \
+    -e DATABASE_URL="postgresql://app:$(grep POSTGRES_PASSWORD .env | cut -d= -f2)@db:5432/app" \
+    -e SEED_ADMIN_EMAIL="$email" \
+    -e SEED_ADMIN_PASSWORD="$pass" \
+    -e SEED_ADMIN_NAME="${name:-Admin}" \
+    webvakwerk-ticket-web-1 \
+    node -e "
+const { PrismaClient } = require('/app/node_modules/.pnpm/@prisma+client@5.22.0_prisma@5.22.0/node_modules/@prisma/client');
+const bcrypt = require('/app/node_modules/.pnpm/bcryptjs@2.4.3/node_modules/bcryptjs');
+const db = new PrismaClient();
+async function main() {
+  const email = process.env.SEED_ADMIN_EMAIL;
+  const password = process.env.SEED_ADMIN_PASSWORD;
+  const name = process.env.SEED_ADMIN_NAME || 'Admin';
+  const existing = await db.user.findUnique({ where: { email } });
+  if (existing) { console.log('EXISTS'); return; }
+  const passwordHash = await bcrypt.hash(password, 12);
+  await db.user.create({ data: { email, name, passwordHash, role: 'SUPER_ADMIN' } });
+  console.log('CREATED');
+}
+main().catch(e => { console.error('ERROR', e.message); process.exit(1); }).finally(() => db.\$disconnect());
+" 2>&1)
+
+  if echo "$result" | grep -q "CREATED"; then
+    success "Admin account aangemaakt: ${email}"
+  elif echo "$result" | grep -q "EXISTS"; then
+    info "Admin account bestaat al: ${email}"
+  else
+    warn "Onverwacht resultaat: $result"
+  fi
+}
+
 # Schema synchroniseren
 cmd_push_schema() {
   header "🔄  Schema synchroniseren"
@@ -316,6 +370,7 @@ cmd_help() {
   echo ""
   echo -e "  ${BOLD}Geavanceerd:${RESET}"
   echo -e "    ${CYAN}db${RESET}              Open database shell (psql)"
+  echo -e "    ${CYAN}seed${RESET}            Maak admin account aan (vanuit .env)"
   echo -e "    ${CYAN}push-schema${RESET}     Sync Prisma schema naar DB zonder rebuild"
   echo -e "    ${CYAN}reset${RESET}           ${RED}Verwijder ALLES inclusief data${RESET} (vraagt bevestiging)"
   echo ""
@@ -340,6 +395,7 @@ case "${1:-help}" in
   logs)         cmd_logs "${2:-web}" ;;
   status)       cmd_status ;;
   db)           cmd_db ;;
+  seed)         cmd_seed ;;
   push-schema)  cmd_push_schema ;;
   help|--help)  cmd_help ;;
   *)
