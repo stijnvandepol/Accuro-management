@@ -47,10 +47,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Copy Prisma client, CLI, and schema (needed at runtime for migrations + queries)
+# Copy the entire .bin directory to get all Prisma wasm/helper files
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin ./node_modules/.bin
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 
 # Copy startup script
