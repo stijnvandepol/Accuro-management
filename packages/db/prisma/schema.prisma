@@ -19,14 +19,20 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  refreshTokens   RefreshToken[]
-  assignedTickets Ticket[]        @relation("AssignedTickets")
-  createdLeads    Lead[]          @relation("CreatedLeads")
-  createdProjects Project[]       @relation("CreatedProjects")
-  notifications   Notification[]
-  activityLogs    ActivityLog[]
-  apiKeys         ApiKey[]
-  comments        TicketComment[]
+  refreshTokens     RefreshToken[]
+  assignedTickets   Ticket[]              @relation("AssignedTickets")
+  createdLeads      Lead[]                @relation("CreatedLeads")
+  createdProjects   Project[]             @relation("CreatedProjects")
+  notifications     Notification[]
+  activityLogs      ActivityLog[]
+  apiKeys           ApiKey[]
+  comments          TicketComment[]
+  timelineEntries   TicketTimelineEntry[] @relation("TimelineAuthor")
+  commEntries       CommunicationEntry[]  @relation("CommAuthor")
+  referencesCreated TicketReference[]     @relation("ReferenceCreator")
+  wikiPagesCreated  WikiPage[]            @relation("WikiCreator")
+  wikiEdits         WikiPageVersion[]     @relation("WikiEditor")
+  wikiLinksCreated  TicketWikiLink[]      @relation("WikiLinkCreator")
 }
 
 enum Role {
@@ -236,10 +242,14 @@ model Ticket {
   updatedAt      DateTime     @updatedAt
   deletedAt      DateTime?
 
-  comments      TicketComment[]
-  attachments   Attachment[]
-  statusHistory StatusHistory[]
-  activityLogs  ActivityLog[]
+  comments        TicketComment[]
+  attachments     Attachment[]
+  statusHistory   StatusHistory[]
+  activityLogs    ActivityLog[]
+  timelineEntries TicketTimelineEntry[]
+  communications  CommunicationEntry[]
+  references      TicketReference[]
+  wikiLinks       TicketWikiLink[]
 }
 
 enum TicketStatus {
@@ -391,4 +401,155 @@ enum NotificationType {
   PROJECT_COMPLETED
   COMMENT_ADDED
   FEEDBACK_ROUND_EXCEEDED
+}
+
+// ─── Timeline ────────────────────────────────────────────────────────────────
+
+model TicketTimelineEntry {
+  id           String            @id @default(cuid())
+  ticketId     String
+  ticket       Ticket            @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  type         TimelineEntryType
+  authorId     String?
+  author       User?             @relation("TimelineAuthor", fields: [authorId], references: [id])
+  content      String?           // markdown for NOTE, null for system events
+  metadata     Json?             // flexible: { oldStatus, newStatus } etc.
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  deletedAt    DateTime?         // soft delete for NOTE entries only
+
+  @@index([ticketId, createdAt])
+  @@index([ticketId, type])
+}
+
+enum TimelineEntryType {
+  NOTE
+  SYSTEM_EVENT
+  STATUS_CHANGE
+  ASSIGNMENT
+  REFERENCE_ADDED
+  WIKI_LINKED
+}
+
+// ─── Communications ───────────────────────────────────────────────────────────
+
+model CommunicationEntry {
+  id                String           @id @default(cuid())
+  ticketId          String
+  ticket            Ticket           @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  direction         CommDirection
+  channel           CommChannel
+  subject           String?
+  body              String
+  externalSender    String?
+  authorId          String?
+  author            User?            @relation("CommAuthor", fields: [authorId], references: [id])
+  externalMessageId String?          @unique // idempotency / dedup
+  createdAt         DateTime         @default(now())
+  attachments       CommAttachment[]
+
+  @@index([ticketId, createdAt])
+  @@index([externalMessageId])
+}
+
+enum CommDirection {
+  INCOMING
+  OUTGOING
+}
+
+enum CommChannel {
+  EMAIL
+  MEETING
+  CALL
+  MESSAGE
+  OTHER
+}
+
+model CommAttachment {
+  id              String             @id @default(cuid())
+  communicationId String
+  communication   CommunicationEntry @relation(fields: [communicationId], references: [id], onDelete: Cascade)
+  filename        String
+  storagePath     String
+  mimeType        String
+  sizeBytes       Int
+  createdAt       DateTime           @default(now())
+}
+
+// ─── References ───────────────────────────────────────────────────────────────
+
+model TicketReference {
+  id          String        @id @default(cuid())
+  ticketId    String
+  ticket      Ticket        @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  title       String
+  url         String
+  type        ReferenceType @default(OTHER)
+  description String?
+  createdById String
+  createdBy   User          @relation("ReferenceCreator", fields: [createdById], references: [id])
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([ticketId])
+}
+
+enum ReferenceType {
+  GITHUB
+  FIGMA
+  DOCS
+  DEPLOYMENT
+  MONITORING
+  DRIVE
+  NOTION
+  OTHER
+}
+
+// ─── Wiki ─────────────────────────────────────────────────────────────────────
+
+model WikiPage {
+  id          String           @id @default(cuid())
+  title       String
+  slug        String           @unique
+  content     String
+  category    String?
+  version     Int              @default(1)
+  createdById String
+  createdBy   User             @relation("WikiCreator", fields: [createdById], references: [id])
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  deletedAt   DateTime?
+  versions    WikiPageVersion[]
+  ticketLinks TicketWikiLink[]
+
+  @@index([slug])
+  @@index([category])
+}
+
+model WikiPageVersion {
+  id         String   @id @default(cuid())
+  pageId     String
+  page       WikiPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  content    String
+  version    Int
+  editedById String
+  editedBy   User     @relation("WikiEditor", fields: [editedById], references: [id])
+  createdAt  DateTime @default(now())
+
+  @@index([pageId, version])
+}
+
+model TicketWikiLink {
+  id          String   @id @default(cuid())
+  ticketId    String
+  ticket      Ticket   @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  wikiPageId  String
+  wikiPage    WikiPage @relation(fields: [wikiPageId], references: [id], onDelete: Cascade)
+  createdById String
+  createdBy   User     @relation("WikiLinkCreator", fields: [createdById], references: [id])
+  createdAt   DateTime @default(now())
+
+  @@unique([ticketId, wikiPageId])
+  @@index([ticketId])
+  @@index([wikiPageId])
 }

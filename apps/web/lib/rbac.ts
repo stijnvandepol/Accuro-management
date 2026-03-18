@@ -35,6 +35,14 @@ export type Permission =
   | 'notifications:read'
   // Reports
   | 'reports:read'
+  // Timeline
+  | 'timeline:read' | 'timeline:write' | 'timeline:delete'
+  // Communications
+  | 'communications:read' | 'communications:write'
+  // References
+  | 'references:read' | 'references:write' | 'references:delete'
+  // Wiki
+  | 'wiki:read' | 'wiki:write' | 'wiki:delete'
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[] | ['*']> = {
   SUPER_ADMIN: ['*'],
@@ -63,6 +71,17 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[] | ['*']> = {
     'api_keys:delete',
     'notifications:read',
     'reports:read',
+    'timeline:read',
+    'timeline:write',
+    'timeline:delete',
+    'communications:read',
+    'communications:write',
+    'references:read',
+    'references:write',
+    'references:delete',
+    'wiki:read',
+    'wiki:write',
+    'wiki:delete',
   ],
   PROJECT_MANAGER: [
     'leads:read',
@@ -76,12 +95,29 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[] | ['*']> = {
     'tickets:assign',
     'notifications:read',
     'reports:read',
+    'timeline:read',
+    'timeline:write',
+    'timeline:delete',
+    'communications:read',
+    'communications:write',
+    'references:read',
+    'references:write',
+    'references:delete',
+    'wiki:read',
+    'wiki:write',
+    'wiki:delete',
   ],
   DEVELOPER: [
     'projects:read',
     'tickets:read',
     'tickets:write',
     'notifications:read',
+    'timeline:read',
+    'timeline:write',
+    'references:read',
+    'references:write',
+    'wiki:read',
+    'communications:read',
   ],
   SALES: [
     'leads:read',
@@ -92,6 +128,10 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[] | ['*']> = {
     'projects:read',
     'tickets:read',
     'notifications:read',
+    'communications:read',
+    'communications:write',
+    'references:read',
+    'wiki:read',
   ],
 }
 
@@ -124,6 +164,10 @@ export function getPermissionsForRole(role: Role): Permission[] {
       'api_keys:read', 'api_keys:write', 'api_keys:delete',
       'notifications:read',
       'reports:read',
+      'timeline:read', 'timeline:write', 'timeline:delete',
+      'communications:read', 'communications:write',
+      'references:read', 'references:write', 'references:delete',
+      'wiki:read', 'wiki:write', 'wiki:delete',
     ]
   }
   return perms as Permission[]

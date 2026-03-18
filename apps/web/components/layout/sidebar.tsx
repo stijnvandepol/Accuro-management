@@ -14,6 +14,7 @@ import {
   Key,
   TrendingUp,
   LogOut,
+  BookOpen,
 } from 'lucide-react'
 
 interface NavItem {
@@ -30,6 +31,7 @@ const navItems: NavItem[] = [
   { label: 'Projects', href: '/projects', icon: FolderKanban },
   { label: 'Tickets', href: '/tickets', icon: Ticket },
   { label: 'Notifications', href: '/notifications', icon: Bell },
+  { label: 'Wiki', href: '/wiki', icon: BookOpen },
 ]
 
 const settingsItems: NavItem[] = [
