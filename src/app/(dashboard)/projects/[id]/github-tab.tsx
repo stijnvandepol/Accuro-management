@@ -2,11 +2,31 @@
 
 import { useState } from "react";
 import { useSession } from "next-auth/react";
-import { Plus, ExternalLink, Trash2, ChevronUp, Github } from "lucide-react";
+import {
+  Plus,
+  ExternalLink,
+  Trash2,
+  ChevronUp,
+  Github,
+  RefreshCw,
+  Loader2,
+  GitPullRequest,
+  CircleDot,
+  Bot,
+  AlertTriangle,
+  Check,
+  X,
+} from "lucide-react";
 import { RepositoryForm } from "@/components/repositories/repository-form";
 import { BriefingGenerator } from "@/components/briefing/briefing-generator";
 import { getRepositories, deleteRepository } from "@/actions/repositories";
+import {
+  getProjectRepoInfo,
+  checkProjectCopilotAgent,
+  createIssueFromChangeRequest,
+} from "@/actions/github";
 import { ChangeRequestStatus, ChangeRequestImpact } from "@prisma/client";
+import type { GitHubRepoInfo, CopilotAgentCheck } from "@/services/githubService";
 
 interface Repository {
   id: string;
@@ -21,6 +41,7 @@ interface ChangeRequest {
   title: string;
   status: ChangeRequestStatus;
   impact: ChangeRequestImpact;
+  githubIssueUrl?: string | null;
 }
 
 interface Props {
@@ -39,6 +60,17 @@ export function ProjectGithubTab({
   const [showForm, setShowForm] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
+  // GitHub info state per repo
+  const [repoInfo, setRepoInfo] = useState<Record<string, GitHubRepoInfo>>({});
+  const [copilotStatus, setCopilotStatus] = useState<Record<string, CopilotAgentCheck>>({});
+  const [loadingInfo, setLoadingInfo] = useState<string | null>(null);
+  const [loadingCopilot, setLoadingCopilot] = useState<string | null>(null);
+  const [creatingIssue, setCreatingIssue] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [issueResults, setIssueResults] = useState<
+    Record<string, { number: number; url: string }>
+  >({});
+
   async function handleRepoAdded() {
     setShowForm(false);
     const result = await getRepositories(projectId);
@@ -54,13 +86,97 @@ export function ProjectGithubTab({
     try {
       await deleteRepository(repoId, projectId, session.user.id);
       setRepos((prev) => prev.filter((r) => r.id !== repoId));
+      // Clean up cached data
+      setRepoInfo((prev) => {
+        const next = { ...prev };
+        delete next[repoId];
+        return next;
+      });
+      setCopilotStatus((prev) => {
+        const next = { ...prev };
+        delete next[repoId];
+        return next;
+      });
     } finally {
       setDeleting(null);
     }
   }
 
+  async function handleCheckRepo(repoId: string) {
+    setError(null);
+    setLoadingInfo(repoId);
+    try {
+      const result = await getProjectRepoInfo(projectId, repoId);
+      if (result.success && result.info) {
+        setRepoInfo((prev) => ({ ...prev, [repoId]: result.info }));
+      } else {
+        setError(result.error ?? "Failed to fetch repo info");
+      }
+    } finally {
+      setLoadingInfo(null);
+    }
+  }
+
+  async function handleCheckCopilot(repoId: string) {
+    if (!session?.user?.id) return;
+    setError(null);
+    setLoadingCopilot(repoId);
+    try {
+      const result = await checkProjectCopilotAgent(
+        projectId,
+        repoId,
+        session.user.id,
+      );
+      if (result.success && result.copilot) {
+        setCopilotStatus((prev) => ({ ...prev, [repoId]: result.copilot }));
+      } else {
+        setError(result.error ?? "Failed to check Copilot agent");
+      }
+    } finally {
+      setLoadingCopilot(null);
+    }
+  }
+
+  async function handleCreateIssue(repoId: string, crId: string) {
+    if (!session?.user?.id) return;
+    setError(null);
+    setCreatingIssue(crId);
+    try {
+      const result = await createIssueFromChangeRequest(
+        projectId,
+        crId,
+        repoId,
+        session.user.id,
+      );
+      if (result.success && result.issue) {
+        setIssueResults((prev) => ({
+          ...prev,
+          [crId]: { number: result.issue.number, url: result.issue.url },
+        }));
+      } else {
+        setError(result.error ?? "Failed to create issue");
+      }
+    } finally {
+      setCreatingIssue(null);
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {/* Error banner */}
+      {error && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700 flex items-start gap-2">
+          <AlertTriangle className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>{error}</span>
+          <button
+            onClick={() => setError(null)}
+            className="ml-auto text-red-500 hover:text-red-700"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+      )}
+
       {/* Repositories */}
       <div>
         <div className="flex items-center justify-between mb-4">
@@ -96,49 +212,197 @@ export function ProjectGithubTab({
         )}
 
         {repos.length > 0 ? (
-          <div className="card divide-y divide-gray-50">
+          <div className="space-y-4">
             {repos.map((repo) => (
-              <div
-                key={repo.id}
-                className="flex items-center justify-between px-5 py-4"
-              >
-                <div>
-                  <div className="flex items-center gap-2">
-                    <a
-                      href={repo.repoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1"
-                    >
-                      {repo.repoName}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
+              <div key={repo.id} className="card">
+                {/* Repo header */}
+                <div className="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={repo.repoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-sm font-medium text-blue-600 hover:underline flex items-center gap-1"
+                      >
+                        {repo.repoName}
+                        <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                    <div className="text-xs text-gray-400 mt-0.5 space-x-2">
+                      <span>Branch: {repo.defaultBranch}</span>
+                      {repo.issueBoardUrl && (
+                        <>
+                          <span>&middot;</span>
+                          <a
+                            href={repo.issueBoardUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-500 hover:underline"
+                          >
+                            Issue Board
+                          </a>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-xs text-gray-400 mt-0.5 space-x-2">
-                    <span>Branch: {repo.defaultBranch}</span>
-                    {repo.issueBoardUrl && (
-                      <>
-                        <span>&middot;</span>
-                        <a
-                          href={repo.issueBoardUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-blue-500 hover:underline"
-                        >
-                          Issue Board
-                        </a>
-                      </>
-                    )}
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleCheckRepo(repo.id)}
+                      disabled={loadingInfo === repo.id}
+                      className="btn-secondary text-xs"
+                      title="Check repository"
+                    >
+                      {loadingInfo === repo.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      )}
+                      Check
+                    </button>
+                    <button
+                      onClick={() => handleCheckCopilot(repo.id)}
+                      disabled={loadingCopilot === repo.id}
+                      className="btn-secondary text-xs"
+                      title="Check Copilot agent"
+                    >
+                      {loadingCopilot === repo.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Bot className="h-3.5 w-3.5" />
+                      )}
+                      Copilot
+                    </button>
+                    <button
+                      onClick={() => handleDelete(repo.id)}
+                      disabled={deleting === repo.id}
+                      className="text-gray-400 hover:text-red-600 transition-colors p-1"
+                      title="Remove repository"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
-                <button
-                  onClick={() => handleDelete(repo.id)}
-                  disabled={deleting === repo.id}
-                  className="text-gray-400 hover:text-red-600 transition-colors p-1"
-                  title="Remove repository"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+
+                {/* Repo info panel (shown after Check) */}
+                {repoInfo[repo.id] && (
+                  <div className="px-5 py-3 bg-gray-50/50 border-b border-gray-50">
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                      <div>
+                        <span className="text-gray-400 block">Visibility</span>
+                        <span className="font-medium text-gray-700">
+                          {repoInfo[repo.id].visibility}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 block flex items-center gap-1">
+                          <CircleDot className="h-3 w-3" /> Open Issues
+                        </span>
+                        <span className="font-medium text-gray-700">
+                          {repoInfo[repo.id].openIssuesCount}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 block flex items-center gap-1">
+                          <GitPullRequest className="h-3 w-3" /> Open PRs
+                        </span>
+                        <span className="font-medium text-gray-700">
+                          {repoInfo[repo.id].openPrCount}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-gray-400 block">Default Branch</span>
+                        <span className="font-medium text-gray-700">
+                          {repoInfo[repo.id].defaultBranch}
+                        </span>
+                      </div>
+                    </div>
+                    {repoInfo[repo.id].latestCommit && (
+                      <div className="mt-2 text-xs text-gray-500">
+                        <span className="text-gray-400">Latest commit: </span>
+                        <code className="bg-gray-100 px-1.5 py-0.5 rounded text-[11px]">
+                          {repoInfo[repo.id].latestCommit!.sha}
+                        </code>{" "}
+                        {repoInfo[repo.id].latestCommit!.message}{" "}
+                        <span className="text-gray-400">
+                          by {repoInfo[repo.id].latestCommit!.author}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Copilot agent status */}
+                {copilotStatus[repo.id] && (
+                  <div className="px-5 py-2.5 bg-gray-50/50 border-b border-gray-50 flex items-center gap-2 text-xs">
+                    <Bot className="h-3.5 w-3.5 text-gray-400" />
+                    <span className="text-gray-500">Copilot Coding Agent:</span>
+                    {copilotStatus[repo.id].available ? (
+                      <span className="text-green-600 font-medium flex items-center gap-1">
+                        <Check className="h-3.5 w-3.5" /> Available
+                      </span>
+                    ) : (
+                      <span className="text-gray-400 font-medium flex items-center gap-1">
+                        <X className="h-3.5 w-3.5" /> Not available
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Create issue from change requests */}
+                {changeRequests.length > 0 && (
+                  <div className="px-5 py-3">
+                    <span className="text-xs font-medium text-gray-500 block mb-2">
+                      Create GitHub Issue from Change Request
+                    </span>
+                    <div className="space-y-1.5">
+                      {changeRequests
+                        .filter((cr) => cr.status !== "DONE")
+                        .slice(0, 5)
+                        .map((cr) => {
+                          const existingIssue =
+                            issueResults[cr.id] ?? (cr.githubIssueUrl ? { url: cr.githubIssueUrl } : null);
+                          return (
+                            <div
+                              key={cr.id}
+                              className="flex items-center justify-between text-xs py-1"
+                            >
+                              <span className="text-gray-700 truncate max-w-[60%]">
+                                {cr.title}
+                              </span>
+                              {existingIssue ? (
+                                <a
+                                  href={existingIssue.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-green-600 hover:underline flex items-center gap-1"
+                                >
+                                  <Check className="h-3 w-3" />
+                                  {"number" in existingIssue
+                                    ? `#${existingIssue.number}`
+                                    : "View Issue"}
+                                  <ExternalLink className="h-3 w-3" />
+                                </a>
+                              ) : (
+                                <button
+                                  onClick={() => handleCreateIssue(repo.id, cr.id)}
+                                  disabled={creatingIssue === cr.id}
+                                  className="btn-secondary text-xs py-0.5 px-2"
+                                >
+                                  {creatingIssue === cr.id ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <Plus className="h-3 w-3" />
+                                  )}
+                                  Create Issue
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
