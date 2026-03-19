@@ -22,8 +22,7 @@ De endpoint maakt geen los supportticket-model aan, maar zet een intake direct o
 
 - een bestaande of nieuwe klant
 - een project
-- optioneel een eerste communicatie-item
-- optioneel een eerste wijzigingsverzoek
+- optioneel een eerste logboekitem
 
 # Minimale payload
 
@@ -45,8 +44,8 @@ De endpoint maakt geen los supportticket-model aan, maar zet een intake direct o
 - `project.description`
 - `project.scope`
 - `project.priority`
-- `initialCommunication.subject`
-- `initialCommunication.content`
+- `initialLogEntry.subject`
+- `initialLogEntry.content`
 - `source.type`
 - `source.label`
 
@@ -61,10 +60,10 @@ De endpoint maakt geen los supportticket-model aan, maar zet een intake direct o
     "status": "INTAKE",
     "priority": "HIGH"
   },
-  "initialCommunication": {
-    "type": "OTHER",
-    "subject": "Nieuw intern ticket",
-    "content": "Ingekomen via n8n of handmatige automatisering."
+  "initialLogEntry": {
+    "type": "INTERNAL",
+    "subject": "Nieuwe intake via website",
+    "content": "Ingekomen via website of automatisering."
   },
   "source": {
     "type": "n8n",
@@ -105,15 +104,17 @@ Bij succes krijg je onder andere terug:
 - `client.id`
 - `project.id`
 - `project.slug`
+- `logEntry.id` als een eerste logboekitem is meegestuurd
 
 # Gebruik in n8n
 
 - Sla de response op.
 - Gebruik `project.id` of `project.slug` in vervolgstappen.
-- Voeg eventueel later nog een offerte- of communicatiestap toe.
+- Voeg eventueel later nog een offerte- of extra logboekstap toe.
 
 # Let op
 
 - Zonder geldige `INTERNAL_API_KEY` krijg je `401 Unauthorized`.
 - Bij verkeerde payload krijg je `422 Validation failed`.
 - Deze endpoint is bedoeld voor interne automatisering, niet voor publieke frontend-formulieren zonder extra afscherming.
+- Oude payloads met `initialCommunication` worden nog geaccepteerd, maar gebruik voortaan `initialLogEntry`.
