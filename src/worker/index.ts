@@ -37,11 +37,6 @@ async function processJob(job: Job<JobData, unknown, JobName>) {
     case "github:sync-repo":
       return processGitHubSync(job.data as Parameters<typeof processGitHubSync>[0]);
 
-    case "email:ingest":
-      // Future: email parsing implementation
-      logger.info("email:ingest job received but is not implemented yet");
-      return { skipped: true };
-
     default:
       logger.warn("Unknown worker job name", { jobName: (job as Job).name });
       return null;

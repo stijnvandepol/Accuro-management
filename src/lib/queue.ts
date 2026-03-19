@@ -32,23 +32,15 @@ export type GitHubSyncJobData = {
   actorUserId: string;
 };
 
-// Future: email parsing
-export type EmailIngestionJobData = {
-  rawEmail: string;
-  projectId?: string;
-};
-
 export type JobData =
   | AgentBriefingJobData
   | InvoiceReminderJobData
   | GitHubSyncJobData
-  | EmailIngestionJobData;
 
 export type JobName =
   | "agent:generate-briefing"
   | "invoice:send-reminder"
   | "github:sync-repo"
-  | "email:ingest";
 
 // ─── Redis connection ─────────────────────────────────────────────────────────
 

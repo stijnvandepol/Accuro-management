@@ -6,4 +6,4 @@ DROP TABLE IF EXISTS "outgoing_emails";
 DROP TYPE IF EXISTS "OutgoingEmailStatus";
 
 -- Remove emailSignature from BusinessSettings
-ALTER TABLE "business_settings" DROP COLUMN IF EXISTS "emailSignature";
+ALTER TABLE IF EXISTS "business_settings" DROP COLUMN IF EXISTS "emailSignature";

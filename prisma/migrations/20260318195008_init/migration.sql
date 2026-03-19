@@ -192,6 +192,24 @@ CREATE TABLE "invoices" (
 );
 
 -- CreateTable
+CREATE TABLE "business_settings" (
+    "id" TEXT NOT NULL DEFAULT 'singleton',
+    "companyName" TEXT NOT NULL DEFAULT '',
+    "address" TEXT,
+    "kvkNumber" TEXT,
+    "vatNumber" TEXT,
+    "iban" TEXT,
+    "bankName" TEXT,
+    "email" TEXT NOT NULL DEFAULT '',
+    "phone" TEXT,
+    "logoUrl" TEXT,
+    "websiteUrl" TEXT,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "business_settings_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "audit_logs" (
     "id" TEXT NOT NULL,
     "actorUserId" TEXT,
