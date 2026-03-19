@@ -26,7 +26,7 @@ export async function getChangeRequests(projectId: string) {
 
     return { success: true, changeRequests };
   } catch (error) {
-    console.error("getChangeRequests error:", error);
+    logger.error("getChangeRequests error:", error);
     return { success: false, error: "Failed to fetch change requests" };
   }
 }
@@ -60,7 +60,7 @@ export async function getChangeRequest(id: string) {
 
     return { success: true, changeRequest };
   } catch (error) {
-    console.error("getChangeRequest error:", error);
+    logger.error("getChangeRequest error:", error);
     return { success: false, error: "Failed to fetch change request" };
   }
 }
@@ -102,7 +102,7 @@ export async function createChangeRequest(
 
     return { success: true, changeRequest };
   } catch (error) {
-    console.error("createChangeRequest error:", error);
+    logger.error("createChangeRequest error:", error);
     return { success: false, error: "Failed to create change request" };
   }
 }
@@ -165,7 +165,7 @@ export async function updateChangeRequest(
 
     return { success: true, changeRequest };
   } catch (error) {
-    console.error("updateChangeRequest error:", error);
+    logger.error("updateChangeRequest error:", error);
     return { success: false, error: "Failed to update change request" };
   }
 }
@@ -200,7 +200,7 @@ export async function reopenChangeRequest(id: string, actorUserId: string) {
 
     return { success: true, changeRequest };
   } catch (error) {
-    console.error("reopenChangeRequest error:", error);
+    logger.error("reopenChangeRequest error:", error);
     return { success: false, error: "Failed to reopen change request" };
   }
 }
@@ -233,7 +233,7 @@ export async function closeChangeRequest(id: string, actorUserId: string) {
 
     return { success: true, changeRequest };
   } catch (error) {
-    console.error("closeChangeRequest error:", error);
+    logger.error("closeChangeRequest error:", error);
     return { success: false, error: "Failed to close change request" };
   }
 }

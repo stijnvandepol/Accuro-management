@@ -5,6 +5,7 @@
  * Placeholder until GitHub App installation is configured.
  */
 import type { GitHubSyncJobData } from "@/lib/queue";
+import { logger } from "@/lib/logger";
 
 export async function processGitHubSync(data: GitHubSyncJobData) {
   const { projectId, repositoryId } = data;
@@ -15,9 +16,7 @@ export async function processGitHubSync(data: GitHubSyncJobData) {
   // 3. Sync to change requests or internal notes
   // 4. Update project audit log
 
-  console.log(
-    `[github-sync] PLACEHOLDER: Would sync repo ${repositoryId} for project ${projectId}`
-  );
+  logger.info("PLACEHOLDER: Would sync repo", { repositoryId, projectId });
 
   return { synced: false, placeholder: true };
 }

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { createAuditLog } from "@/lib/audit";
 import { UserRole } from "@prisma/client";
 import bcrypt from "bcryptjs";
+import { logger } from "@/lib/logger";
 
 export async function getUsers() {
   try {
@@ -21,7 +22,7 @@ export async function getUsers() {
 
     return { success: true, users };
   } catch (error) {
-    console.error("getUsers error:", error);
+    logger.error("getUsers error:", error);
     return { success: false, error: "Failed to fetch users" };
   }
 }
@@ -72,7 +73,7 @@ export async function createUser(
 
     return { success: true, user };
   } catch (error) {
-    console.error("createUser error:", error);
+    logger.error("createUser error:", error);
     return { success: false, error: "Failed to create user" };
   }
 }
@@ -112,7 +113,7 @@ export async function updateUserRole(
 
     return { success: true, user };
   } catch (error) {
-    console.error("updateUserRole error:", error);
+    logger.error("updateUserRole error:", error);
     return { success: false, error: "Failed to update user role" };
   }
 }
@@ -144,7 +145,7 @@ export async function deleteUser(id: string, actorUserId: string) {
 
     return { success: true };
   } catch (error) {
-    console.error("deleteUser error:", error);
+    logger.error("deleteUser error:", error);
     return { success: false, error: "Failed to delete user" };
   }
 }

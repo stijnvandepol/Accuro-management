@@ -7,9 +7,10 @@
 import { prisma } from "@/lib/db";
 import { InvoiceStatus } from "@prisma/client";
 import type { InvoiceReminderJobData } from "@/lib/queue";
+import { logger } from "@/lib/logger";
 
 export async function processInvoiceReminder(data: InvoiceReminderJobData) {
-  const { invoiceId, clientEmail, clientName, invoiceNumber, totalAmount, dueDate } = data;
+  const { invoiceId, clientEmail, invoiceNumber, totalAmount, dueDate } = data;
 
   // Verify the invoice is still unpaid before sending
   const invoice = await prisma.invoice.findUnique({
@@ -22,7 +23,7 @@ export async function processInvoiceReminder(data: InvoiceReminderJobData) {
   }
 
   if (invoice.status === InvoiceStatus.PAID) {
-    console.log(`[invoice-reminder] Invoice ${invoiceNumber} already paid — skipping reminder`);
+    logger.info("Invoice already paid — skipping reminder", { invoiceNumber });
     return { skipped: true, reason: "already_paid" };
   }
 
@@ -33,9 +34,7 @@ export async function processInvoiceReminder(data: InvoiceReminderJobData) {
   //   body: buildReminderEmail(clientName, invoiceNumber, totalAmount, dueDate),
   // });
 
-  console.log(
-    `[invoice-reminder] PLACEHOLDER: Would send reminder to ${clientEmail} for invoice ${invoiceNumber} (€${totalAmount}, due ${dueDate})`
-  );
+  logger.info("PLACEHOLDER: Would send invoice reminder", { clientEmail, invoiceNumber, totalAmount, dueDate });
 
   return {
     sent: false,

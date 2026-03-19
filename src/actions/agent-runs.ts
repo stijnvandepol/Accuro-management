@@ -3,6 +3,8 @@
 import { prisma } from "@/lib/db";
 import { createAuditLog } from "@/lib/audit";
 import { AgentRunStatus } from "@prisma/client";
+import { logger } from "@/lib/logger";
+import { buildDeveloperBriefing } from "@/lib/briefing";
 
 export async function getAgentRuns(projectId: string) {
   try {
@@ -21,7 +23,7 @@ export async function getAgentRuns(projectId: string) {
 
     return { success: true, agentRuns };
   } catch (error) {
-    console.error("getAgentRuns error:", error);
+    logger.error("getAgentRuns error:", error);
     return { success: false, error: "Failed to fetch agent runs" };
   }
 }
@@ -62,107 +64,7 @@ export async function generateDeveloperBriefing(
       });
     }
 
-    const primaryRepo = project.repositories[0];
-
-    // Build acceptance criteria from change request description
-    let acceptanceCriteria = "- [ ] Feature implemented as described\n- [ ] No regressions introduced\n- [ ] Code is clean and documented";
-    if (changeRequest) {
-      const descLines = changeRequest.description
-        .split(/[.!?]/)
-        .map((s) => s.trim())
-        .filter((s) => s.length > 10)
-        .slice(0, 5);
-
-      if (descLines.length > 0) {
-        acceptanceCriteria = descLines
-          .map((line) => `- [ ] ${line}`)
-          .join("\n");
-      }
-    }
-
-    // Derive risks from impact level
-    let risks = "- [ ] Unexpected side effects\n- [ ] Performance regression";
-    if (changeRequest) {
-      if (changeRequest.impact === "LARGE") {
-        risks =
-          "- Breaking changes may affect other parts of the codebase\n- Performance impact under load needs validation\n- Client-facing functionality requires thorough QA";
-      } else if (changeRequest.impact === "MEDIUM") {
-        risks =
-          "- Adjacent features may be affected\n- Requires cross-browser testing\n- Regression testing recommended";
-      } else {
-        risks =
-          "- Minimal risk expected\n- Verify no unintended side effects\n- Test on mobile devices";
-      }
-    }
-
-    // Tech stack specific notes
-    let techNotes = "Follow project coding standards and conventions.";
-    if (project.techStack) {
-      const stack = project.techStack.toLowerCase();
-      const notes: string[] = [];
-      if (stack.includes("next") || stack.includes("react")) {
-        notes.push("Use React Server Components where possible.");
-        notes.push("Ensure proper client/server boundary separation.");
-      }
-      if (stack.includes("prisma")) {
-        notes.push("Run Prisma migrations if schema changes are required.");
-      }
-      if (stack.includes("typescript") || stack.includes("ts")) {
-        notes.push("Maintain strict TypeScript types — no `any`.");
-      }
-      if (stack.includes("tailwind")) {
-        notes.push("Use Tailwind utility classes; avoid custom CSS unless necessary.");
-      }
-      if (notes.length > 0) {
-        techNotes = notes.join("\n");
-      }
-    }
-
-    const briefing = `# Developer Briefing
-
-## Project Context
-- **Project**: ${project.name}
-- **Client**: ${project.client.companyName}
-- **Status**: ${project.status}
-- **Tech Stack**: ${project.techStack ?? "Not specified"}
-- **Domain**: ${project.domainName ?? "Not specified"}
-- **Hosting**: ${project.hostingInfo ?? "Not specified"}
-- **Repository**: ${primaryRepo?.repoUrl ?? "No repository linked"}
-- **Default Branch**: ${primaryRepo?.defaultBranch ?? "Not specified"}
-
-${
-  changeRequest
-    ? `## Change Request
-- **Title**: ${changeRequest.title}
-- **Description**: ${changeRequest.description}
-- **Impact**: ${changeRequest.impact}
-- **Source**: ${changeRequest.sourceType}
-
-## Requested Change
-${changeRequest.description}`
-    : "## Requested Change\n_No specific change request linked. Refer to project scope and description._"
-}
-
-## Acceptance Criteria
-${acceptanceCriteria}
-
-## Technical Notes
-${techNotes}
-
-## Repository Context
-- Repo: ${primaryRepo?.repoUrl ?? "N/A"}
-- Branch: ${primaryRepo?.defaultBranch ?? "N/A"}
-- Issues: ${primaryRepo?.issueBoardUrl ?? "N/A"}
-
-## Risks
-${risks}
-
-## Review Checklist
-- [ ] Code reviewed
-- [ ] Tested on mobile
-- [ ] Cross-browser tested
-- [ ] Client approved
-`;
+    const briefing = buildDeveloperBriefing(project, changeRequest);
 
     // Save the agent run
     const agentRun = await prisma.agentRun.create({
@@ -190,7 +92,7 @@ ${risks}
 
     return { success: true, briefing, agentRunId: agentRun.id };
   } catch (error) {
-    console.error("generateDeveloperBriefing error:", error);
+    logger.error("generateDeveloperBriefing error:", error);
     return { success: false, error: "Failed to generate developer briefing" };
   }
 }
@@ -226,7 +128,7 @@ export async function saveAgentRun(data: {
 
     return { success: true, agentRunId: agentRun.id };
   } catch (error) {
-    console.error("saveAgentRun error:", error);
+    logger.error("saveAgentRun error:", error);
     return { success: false, error: "Failed to save agent run" };
   }
 }

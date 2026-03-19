@@ -2,14 +2,13 @@
 
 import { prisma } from "@/lib/db";
 import { createAuditLog } from "@/lib/audit";
+import { logger } from "@/lib/logger";
 import {
   getRepositoryInfo,
   checkCopilotAgent,
   createIssue,
   parseOwnerRepo,
   GitHubApiError,
-  type GitHubRepoInfo,
-  type CopilotAgentCheck,
 } from "@/services/githubService";
 
 // ─── Get repository info for a project ───────────────────────────────────────
@@ -31,7 +30,7 @@ export async function getProjectRepoInfo(projectId: string, repositoryId: string
     if (error instanceof GitHubApiError) {
       return { success: false as const, error: error.message, rateLimited: error.rateLimited };
     }
-    console.error("getProjectRepoInfo error:", error);
+    logger.error("getProjectRepoInfo error:", error);
     return { success: false as const, error: "Failed to fetch repository info" };
   }
 }
@@ -71,7 +70,7 @@ export async function checkProjectCopilotAgent(
     if (error instanceof GitHubApiError) {
       return { success: false as const, error: error.message, rateLimited: error.rateLimited };
     }
-    console.error("checkProjectCopilotAgent error:", error);
+    logger.error("checkProjectCopilotAgent error:", error);
     return { success: false as const, error: "Failed to check Copilot agent" };
   }
 }
@@ -149,7 +148,7 @@ export async function createIssueFromChangeRequest(
     if (error instanceof GitHubApiError) {
       return { success: false as const, error: error.message, rateLimited: error.rateLimited };
     }
-    console.error("createIssueFromChangeRequest error:", error);
+    logger.error("createIssueFromChangeRequest error:", error);
     return { success: false as const, error: "Failed to create GitHub issue" };
   }
 }

@@ -2,6 +2,7 @@
 
 import { prisma } from "@/lib/db";
 import { createAuditLog } from "@/lib/audit";
+import { logger } from "@/lib/logger";
 
 export async function getRepositories(projectId: string) {
   try {
@@ -12,7 +13,7 @@ export async function getRepositories(projectId: string) {
 
     return { success: true, repositories };
   } catch (error) {
-    console.error("getRepositories error:", error);
+    logger.error("getRepositories error:", error);
     return { success: false, error: "Failed to fetch repositories" };
   }
 }
@@ -52,7 +53,7 @@ export async function addRepository(
 
     return { success: true, repository };
   } catch (error) {
-    console.error("addRepository error:", error);
+    logger.error("addRepository error:", error);
     return { success: false, error: "Failed to add repository" };
   }
 }
@@ -94,7 +95,7 @@ export async function deleteRepository(
 
     return { success: true };
   } catch (error) {
-    console.error("deleteRepository error:", error);
+    logger.error("deleteRepository error:", error);
     return { success: false, error: "Failed to delete repository" };
   }
 }

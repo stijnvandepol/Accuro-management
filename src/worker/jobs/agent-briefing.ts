@@ -3,13 +3,15 @@
  *
  * When triggered from the web app, this job:
  * 1. Fetches the project and change request context
- * 2. Builds the developer briefing (same logic as generateDeveloperBriefing action)
+ * 2. Builds the developer briefing via shared buildDeveloperBriefing()
  * 3. Saves the AgentRun record in the DB
  * 4. Future: push to GitHub Issues, call an AI API, etc.
  */
 import { prisma } from "@/lib/db";
 import { AgentRunStatus } from "@prisma/client";
 import type { AgentBriefingJobData } from "@/lib/queue";
+import { logger } from "@/lib/logger";
+import { buildDeveloperBriefing } from "@/lib/briefing";
 
 export async function processAgentBriefing(data: AgentBriefingJobData) {
   const { projectId, changeRequestId, actorUserId } = data;
@@ -39,9 +41,7 @@ export async function processAgentBriefing(data: AgentBriefingJobData) {
     });
   }
 
-  const primaryRepo = project.repositories[0];
-
-  const briefing = buildBriefing(project, changeRequest, primaryRepo ?? null);
+  const briefing = buildDeveloperBriefing(project, changeRequest);
 
   // Save the run record
   const agentRun = await prisma.agentRun.create({
@@ -61,72 +61,6 @@ export async function processAgentBriefing(data: AgentBriefingJobData) {
   // - await callAiApi(briefing)
   // - await sendSlackNotification(...)
 
-  console.log(`[agent-briefing] Briefing saved as AgentRun ${agentRun.id} for project ${projectId}`);
+  logger.info("Briefing saved as AgentRun", { agentRunId: agentRun.id, projectId });
   return { agentRunId: agentRun.id };
-}
-
-function buildBriefing(
-  project: {
-    name: string;
-    status: string;
-    techStack: string | null;
-    domainName: string | null;
-    hostingInfo: string | null;
-    client: { companyName: string };
-    repositories: Array<{ repoUrl: string; defaultBranch: string; issueBoardUrl: string | null }>;
-  },
-  changeRequest: {
-    title: string;
-    description: string;
-    impact: string;
-    sourceType: string;
-  } | null,
-  primaryRepo: { repoUrl: string; defaultBranch: string; issueBoardUrl: string | null } | null
-): string {
-  return `# Developer Briefing
-
-## Project Context
-- **Project**: ${project.name}
-- **Client**: ${project.client.companyName}
-- **Status**: ${project.status}
-- **Tech Stack**: ${project.techStack ?? "Not specified"}
-- **Domain**: ${project.domainName ?? "Not specified"}
-- **Hosting**: ${project.hostingInfo ?? "Not specified"}
-- **Repository**: ${primaryRepo?.repoUrl ?? "No repository linked"}
-- **Default Branch**: ${primaryRepo?.defaultBranch ?? "Not specified"}
-
-${changeRequest
-  ? `## Change Request
-- **Title**: ${changeRequest.title}
-- **Impact**: ${changeRequest.impact}
-- **Source**: ${changeRequest.sourceType}
-
-## Requested Change
-${changeRequest.description}`
-  : "## Requested Change\n_No specific change request linked. Refer to project scope and description._"
-}
-
-## Acceptance Criteria
-${changeRequest
-  ? changeRequest.description
-      .split(/[.!?]/)
-      .map((s) => s.trim())
-      .filter((s) => s.length > 10)
-      .slice(0, 5)
-      .map((line) => `- [ ] ${line}`)
-      .join("\n") || "- [ ] Feature implemented as described"
-  : "- [ ] Feature implemented as described\n- [ ] No regressions introduced"
-}
-
-## Repository Context
-- Repo: ${primaryRepo?.repoUrl ?? "N/A"}
-- Branch: ${primaryRepo?.defaultBranch ?? "N/A"}
-- Issues: ${primaryRepo?.issueBoardUrl ?? "N/A"}
-
-## Review Checklist
-- [ ] Code reviewed
-- [ ] Tested on mobile
-- [ ] Cross-browser tested
-- [ ] Client approved
-`;
 }

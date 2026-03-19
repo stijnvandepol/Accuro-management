@@ -5,6 +5,7 @@ import { createAuditLog } from "@/lib/audit";
 import { InvoiceFormSchema, type InvoiceFormData } from "@/lib/validations/invoice";
 import { InvoiceStatus } from "@prisma/client";
 import { getN8nInvoiceWebhookUrl } from "@/lib/env";
+import { logger } from "@/lib/logger";
 
 export async function getInvoices(filters?: {
   clientId?: string;
@@ -31,7 +32,7 @@ export async function getInvoices(filters?: {
 
     return { success: true, invoices };
   } catch (error) {
-    console.error("getInvoices error:", error);
+    logger.error("getInvoices error:", error);
     return { success: false, error: "Failed to fetch invoices" };
   }
 }
@@ -54,7 +55,7 @@ export async function getInvoice(id: string) {
 
     return { success: true, invoice };
   } catch (error) {
-    console.error("getInvoice error:", error);
+    logger.error("getInvoice error:", error);
     return { success: false, error: "Failed to fetch invoice" };
   }
 }
@@ -97,7 +98,7 @@ export async function createInvoice(data: InvoiceFormData, actorUserId: string) 
 
     return { success: true, invoice };
   } catch (error) {
-    console.error("createInvoice error:", error);
+    logger.error("createInvoice error:", error);
     return { success: false, error: "Failed to create invoice" };
   }
 }
@@ -166,7 +167,7 @@ export async function updateInvoice(
 
     return { success: true, invoice };
   } catch (error) {
-    console.error("updateInvoice error:", error);
+    logger.error("updateInvoice error:", error);
     return { success: false, error: "Failed to update invoice" };
   }
 }
@@ -199,7 +200,7 @@ export async function markInvoicePaid(id: string, actorUserId: string) {
 
     return { success: true, invoice };
   } catch (error) {
-    console.error("markInvoicePaid error:", error);
+    logger.error("markInvoicePaid error:", error);
     return { success: false, error: "Failed to mark invoice as paid" };
   }
 }
@@ -337,7 +338,7 @@ export async function getFinanceOverview() {
       },
     };
   } catch (error) {
-    console.error("getFinanceOverview error:", error);
+    logger.error("getFinanceOverview error:", error);
     return { success: false, error: "Failed to fetch finance overview" };
   }
 }
