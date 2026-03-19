@@ -33,7 +33,6 @@ export const BusinessSettingsSchema = z.object({
   quoteFooterText: z.string().trim().optional(),
   invoiceFooterText: z.string().trim().optional(),
   defaultTermsText: z.string().trim().optional(),
-  emailSignature: z.string().trim().optional(),
 });
 
 export type BusinessSettingsData = z.infer<typeof BusinessSettingsSchema>;

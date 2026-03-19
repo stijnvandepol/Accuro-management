@@ -9,7 +9,6 @@ import {
   FolderKanban,
   Receipt,
   FileText,
-  Mail,
   Settings,
   LogOut,
 } from "lucide-react";
@@ -21,7 +20,6 @@ const navItems = [
   { label: "Projecten", href: "/projects", icon: FolderKanban },
   { label: "Financiën", href: "/finance", icon: Receipt },
   { label: "Docs", href: "/docs", icon: FileText },
-  { label: "E-mails", href: "/emails", icon: Mail },
 ];
 
 export function Sidebar() {
