@@ -8,64 +8,109 @@
         "responseMode": "responseNode",
         "options": {}
       },
-      "id": "webhook-trigger",
+      "id": "55b8fa2a-465b-44aa-827e-6d89440dcd16",
       "name": "Webhook – Ontvang offerte",
       "type": "n8n-nodes-base.webhook",
       "typeVersion": 2,
-      "position": [240, 300]
+      "position": [2112, 0],
+      "webhookId": "87d654c7-47af-4071-bcd4-dc5302b9ec90"
     },
     {
       "parameters": {
-        "jsCode": "// Bouw het HTML-document op voor de offerte\nconst d = $input.first().json.body;\n\nconst formatEuro = (v) => v != null\n  ? new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(v)\n  : null;\n\nconst dateNL = new Intl.DateTimeFormat('nl-NL', { dateStyle: 'long' }).format(new Date());\n\nconst scopeHtml = d.scope\n  ? d.scope.split('\\n').map(l => `<li>${l}</li>`).join('')\n  : '';\n\nconst html = `<!DOCTYPE html>\n<html lang=\"nl\">\n<head>\n  <meta charset=\"UTF-8\" />\n  <style>\n    * { box-sizing: border-box; margin: 0; padding: 0; }\n    body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #1a1a1a; padding: 48px; }\n    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 48px; }\n    .logo { font-size: 22px; font-weight: 700; color: #111; }\n    .meta { text-align: right; font-size: 12px; color: #555; line-height: 1.8; }\n    h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }\n    .subtitle { font-size: 13px; color: #666; margin-bottom: 36px; }\n    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 36px; }\n    .block-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: #999; margin-bottom: 6px; }\n    .block-value { font-size: 13px; line-height: 1.7; }\n    section { margin-bottom: 28px; }\n    section h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #777; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 12px; }\n    section p, section ul { font-size: 13px; line-height: 1.8; color: #333; }\n    section ul { padding-left: 18px; }\n    .price-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }\n    .price-label { font-size: 13px; font-weight: 600; color: #374151; }\n    .price-amount { font-size: 22px; font-weight: 700; color: #111; }\n    .footer { margin-top: 48px; font-size: 11px; color: #aaa; text-align: center; border-top: 1px solid #f0f0f0; padding-top: 16px; }\n  </style>\n</head>\n<body>\n  <div class=\"header\">\n    <div class=\"logo\">Agency OS</div>\n    <div class=\"meta\">\n      <strong>OFFERTE</strong><br/>\n      Datum: ${dateNL}<br/>\n      Ref: ${d.proposalId.slice(-8).toUpperCase()}\n    </div>\n  </div>\n\n  <h1>${d.title}</h1>\n  <p class=\"subtitle\">Opgesteld voor ${d.recipientCompany ?? d.recipientName ?? ''}</p>\n\n  <div class=\"two-col\">\n    <div>\n      <div class=\"block-label\">Aan</div>\n      <div class=\"block-value\">\n        ${d.recipientName ?? ''}<br/>\n        ${d.recipientCompany ?? ''}<br/>\n        ${(d.recipientAddress ?? '').replace(/\\n/g, '<br/>')}\n      </div>\n    </div>\n    <div>\n      <div class=\"block-label\">Contactgegevens</div>\n      <div class=\"block-value\">${d.recipientEmail ?? ''}</div>\n    </div>\n  </div>\n\n  <section>\n    <h2>Samenvatting</h2>\n    <p>${d.summary.replace(/\\n/g, '<br/>')}</p>\n  </section>\n\n  ${scopeHtml ? `\n  <section>\n    <h2>Scope van het werk</h2>\n    <ul>${scopeHtml}</ul>\n  </section>` : ''}\n\n  ${d.deliveryTime ? `\n  <section>\n    <h2>Doorlooptijd</h2>\n    <p>${d.deliveryTime}</p>\n  </section>` : ''}\n\n  ${d.amount != null ? `\n  <div class=\"price-box\">\n    <span class=\"price-label\">${d.priceLabel ?? 'Projectprijs'}</span>\n    <span class=\"price-amount\">${formatEuro(d.amount)}</span>\n  </div>` : ''}\n\n  ${d.notes ? `\n  <section>\n    <h2>Opmerkingen</h2>\n    <p>${d.notes.replace(/\\n/g, '<br/>')}</p>\n  </section>` : ''}\n\n  <div class=\"footer\">\n    Deze offerte is vrijblijvend en geldig voor 30 dagen.\n  </div>\n</body>\n</html>`;\n\nreturn [{ json: { ...d, html } }];"
+        "jsCode": "// FIX: data zit onder .body omdat n8n de webhook payload zo structureert\nconst d = $input.first().json.body;\n\nconst formatEuro = (v) =>\n  v != null\n    ? new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(v)\n    : null;\n\nconst escapeHtml = (value) =>\n  String(value ?? '')\n    .replaceAll('&', '&amp;')\n    .replaceAll('<', '&lt;')\n    .replaceAll('>', '&gt;')\n    .replaceAll('\"', '&quot;')\n    .replaceAll(\"'\", '&#39;');\n\nconst dateNL = new Intl.DateTimeFormat('nl-NL', { dateStyle: 'long' }).format(new Date());\nconst proposalRef = d.proposalId ? String(d.proposalId).slice(-8).toUpperCase() : 'ONBEKEND';\nconst summaryHtml = escapeHtml(d.summary ?? '').replace(/\\n/g, '<br/>');\nconst notesHtml = escapeHtml(d.notes ?? '').replace(/\\n/g, '<br/>');\nconst addressHtml = escapeHtml(d.recipientAddress ?? '').replace(/\\n/g, '<br/>');\n\nconst scopeHtml = d.scope\n  ? String(d.scope).split('\\n').map(l => l.trim()).filter(Boolean).map(l => `<li>${escapeHtml(l)}</li>`).join('')\n  : '';\n\nconst html = `<!DOCTYPE html>\n<html lang=\"nl\">\n<head>\n  <meta charset=\"UTF-8\" />\n  <style>\n    * { box-sizing: border-box; margin: 0; padding: 0; }\n    body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #1a1a1a; padding: 48px; }\n    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 48px; }\n    .logo { font-size: 22px; font-weight: 700; color: #111; }\n    .meta { text-align: right; font-size: 12px; color: #555; line-height: 1.8; }\n    h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }\n    .subtitle { font-size: 13px; color: #666; margin-bottom: 36px; }\n    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 36px; }\n    .block-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: #999; margin-bottom: 6px; }\n    .block-value { font-size: 13px; line-height: 1.7; }\n    section { margin-bottom: 28px; }\n    section h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #777; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 12px; }\n    section p, section ul { font-size: 13px; line-height: 1.8; color: #333; }\n    section ul { padding-left: 18px; }\n    .price-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }\n    .price-label { font-size: 13px; font-weight: 600; color: #374151; }\n    .price-amount { font-size: 22px; font-weight: 700; color: #111; }\n    .footer { margin-top: 48px; font-size: 11px; color: #aaa; text-align: center; border-top: 1px solid #f0f0f0; padding-top: 16px; }\n  </style>\n</head>\n<body>\n  <div class=\"header\">\n    <div class=\"logo\">Agency OS</div>\n    <div class=\"meta\"><strong>OFFERTE</strong><br/>Datum: ${dateNL}<br/>Ref: ${proposalRef}</div>\n  </div>\n  <h1>${escapeHtml(d.title ?? 'Offerte')}</h1>\n  <p class=\"subtitle\">Opgesteld voor ${escapeHtml(d.recipientCompany ?? d.recipientName ?? '')}</p>\n  <div class=\"two-col\">\n    <div>\n      <div class=\"block-label\">Aan</div>\n      <div class=\"block-value\">${escapeHtml(d.recipientName ?? '')}<br/>${escapeHtml(d.recipientCompany ?? '')}<br/>${addressHtml}</div>\n    </div>\n    <div>\n      <div class=\"block-label\">Contactgegevens</div>\n      <div class=\"block-value\">${escapeHtml(d.recipientEmail ?? '')}</div>\n    </div>\n  </div>\n  <section><h2>Samenvatting</h2><p>${summaryHtml}</p></section>\n  ${scopeHtml ? `<section><h2>Scope van het werk</h2><ul>${scopeHtml}</ul></section>` : ''}\n  ${d.deliveryTime ? `<section><h2>Doorlooptijd</h2><p>${escapeHtml(d.deliveryTime)}</p></section>` : ''}\n  ${d.amount != null ? `<div class=\"price-box\"><span class=\"price-label\">${escapeHtml(d.priceLabel ?? 'Projectprijs')}</span><span class=\"price-amount\">${formatEuro(d.amount)}</span></div>` : ''}\n  ${d.notes ? `<section><h2>Opmerkingen</h2><p>${notesHtml}</p></section>` : ''}\n  <div class=\"footer\">Deze offerte is vrijblijvend en geldig voor 30 dagen.</div>\n</body>\n</html>`;\n\nreturn [{ json: { ...d, html } }];"
       },
-      "id": "build-html",
+      "id": "21f17bc2-a7c2-442b-aeb9-60949294bb1c",
       "name": "Bouw HTML offerte",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [480, 300]
+      "position": [2352, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const html = $input.first().json.html;\nconst buffer = Buffer.from(html, 'utf8');\nconst binaryData = {\n  data: buffer.toString('base64'),\n  mimeType: 'application/octet-stream',\n  fileName: 'offerte.html'\n};\nconst item = $input.first();\nitem.binary = { data: binaryData };\nreturn [item];"
+      },
+      "id": "8c4b322d-c053-41aa-9364-1fe86af58d37",
+      "name": "HTML → Binary",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2592, 0]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "https://htmlcsstoimage.com/demo_run",
+        "url": "https://v2.convertapi.com/convert/html/to/pdf",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Accept",
+              "value": "application/octet-stream"
+            }
           ]
         },
         "sendBody": true,
+        "contentType": "multipart-form-data",
         "bodyParameters": {
           "parameters": [
-            { "name": "html", "value": "={{ $json.html }}" },
-            { "name": "selector", "value": "body" }
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            }
           ]
         },
-        "options": {}
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "data"
+            }
+          }
+        }
       },
-      "id": "html-to-pdf",
-      "name": "HTML → PDF (Gotenberg)",
+      "id": "0cc94583-6a12-4b5c-897b-66a0ee389dbd",
+      "name": "HTML → PDF (ConvertAPI)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [720, 300],
-      "notes": "Vervang deze node door de Gotenberg of HTMLtoPDF node die je zelf host. Zie README."
+      "position": [2832, 0],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "sdqCbWt1JuZ3OBf1",
+          "name": "Bearer Auth account"
+        }
+      }
     },
     {
       "parameters": {
-        "driveId": { "mode": "list", "value": "My Drive" },
-        "folderId": {
-          "mode": "id",
-          "value": "VERVANG_MET_JE_GOOGLE_DRIVE_FOLDER_ID"
-        },
         "name": "=Offerte - {{ $('Bouw HTML offerte').item.json.recipientCompany ?? $('Bouw HTML offerte').item.json.recipientName }} - {{ $now.format('yyyy-MM-dd') }}.pdf",
+        "driveId": {
+          "__rl": true,
+          "value": "My Drive",
+          "mode": "list",
+          "cachedResultName": "My Drive",
+          "cachedResultUrl": "https://drive.google.com/drive/my-drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "https://drive.google.com/drive/u/0/folders/1e2bzWKRrxNWyBIgX5dgsum8Cx2k74xae",
+          "mode": "url"
+        },
         "inputDataFieldName": "data",
         "options": {}
       },
-      "id": "google-drive-upload",
+      "id": "6e156141-85ee-4849-b725-73c147fdae99",
       "name": "Upload naar Google Drive",
       "type": "n8n-nodes-base.googleDrive",
       "typeVersion": 3,
-      "position": [960, 300]
+      "position": [3072, 0],
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "j6FUWoXphw2lPiUG",
+          "name": "Google Drive account"
+        }
+      }
     },
     {
       "parameters": {
@@ -74,24 +119,36 @@
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
-            { "name": "Authorization", "value": "=Bearer {{ $env.TICKET_INTERNAL_API_KEY }}" },
-            { "name": "Content-Type", "value": "application/json" }
+            {
+              "name": "Authorization",
+              "value": "=Bearer {{ $env.TICKET_INTERNAL_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
           ]
         },
         "sendBody": true,
         "bodyParameters": {
           "parameters": [
-            { "name": "driveUrl", "value": "={{ $json.webViewLink }}" },
-            { "name": "driveFileId", "value": "={{ $json.id }}" }
+            {
+              "name": "driveUrl",
+              "value": "={{ $json.webViewLink }}"
+            },
+            {
+              "name": "driveFileId",
+              "value": "={{ $json.id }}"
+            }
           ]
         },
         "options": {}
       },
-      "id": "callback-ticket-system",
+      "id": "4a92e33b-be1b-4a79-90a5-6ce5eb6c95ad",
       "name": "Callback → Ticket systeem",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
-      "position": [1200, 300]
+      "position": [3312, 0]
     },
     {
       "parameters": {
@@ -99,11 +156,11 @@
         "responseBody": "={ \"ok\": true }",
         "options": {}
       },
-      "id": "webhook-response",
+      "id": "9e237008-b3e0-4d23-a605-2502b7c15b2e",
       "name": "Webhook Response",
       "type": "n8n-nodes-base.respondToWebhook",
       "typeVersion": 1,
-      "position": [1440, 300]
+      "position": [3552, 0]
     }
   ],
   "connections": {
@@ -111,9 +168,12 @@
       "main": [[{ "node": "Bouw HTML offerte", "type": "main", "index": 0 }]]
     },
     "Bouw HTML offerte": {
-      "main": [[{ "node": "HTML → PDF (Gotenberg)", "type": "main", "index": 0 }]]
+      "main": [[{ "node": "HTML → Binary", "type": "main", "index": 0 }]]
     },
-    "HTML → PDF (Gotenberg)": {
+    "HTML → Binary": {
+      "main": [[{ "node": "HTML → PDF (ConvertAPI)", "type": "main", "index": 0 }]]
+    },
+    "HTML → PDF (ConvertAPI)": {
       "main": [[{ "node": "Upload naar Google Drive", "type": "main", "index": 0 }]]
     },
     "Upload naar Google Drive": {
@@ -123,7 +183,64 @@
       "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]]
     }
   },
-  "settings": {
-    "executionOrder": "v1"
+  "pinData": {
+    "Webhook – Ontvang offerte": [
+      {
+        "headers": {
+          "host": "automation.stijnvandepol.nl",
+          "user-agent": "node",
+          "content-length": "1005",
+          "accept": "*/*",
+          "accept-encoding": "gzip, br",
+          "accept-language": "*",
+          "cdn-loop": "cloudflare; loops=1",
+          "cf-connecting-ip": "188.90.207.96",
+          "cf-ipcountry": "NL",
+          "cf-ray": "9debef660dcbdef8-AMS",
+          "cf-visitor": "{\"scheme\":\"https\"}",
+          "cf-warp-tag-id": "1f81cca8-38f6-49a8-a622-85796573ce8a",
+          "connection": "keep-alive",
+          "content-type": "application/json",
+          "sec-fetch-mode": "cors",
+          "x-forwarded-for": "188.90.207.96",
+          "x-forwarded-proto": "https"
+        },
+        "params": {},
+        "query": {},
+        "body": {
+          "proposalId": "cmmxcr2vf000hp80778zas3h3",
+          "title": "Offerte TechStart – Launch Landing Page",
+          "recipientName": "Robin de Vries",
+          "recipientEmail": "robin@techstart.io",
+          "recipientCompany": "TechStart B.V.",
+          "recipientAddress": "High Tech Campus 5, 5656 AE Eindhoven",
+          "summary": "Single-page landing site voor de product launch van TechStart's nieuwe fintech app. CTA-gericht, hoge conversie.",
+          "scope": "1 pagina: hero, features, social proof, early access form, footer. Geen blog, geen aparte pagina's.",
+          "priceLabel": "Projectprijs",
+          "amount": 200,
+          "deliveryTime": "3w",
+          "notes": "est",
+          "client": {
+            "id": "client-techstart-bv",
+            "companyName": "TechStart B.V.",
+            "contactName": "Robin de Vries",
+            "email": "robin@techstart.io",
+            "address": "High Tech Campus 5, 5656 AE Eindhoven"
+          },
+          "project": {
+            "id": "project-techstart-landing",
+            "name": "TechStart – Launch Landing Page",
+            "description": "Single-page landing site voor de product launch van TechStart's nieuwe fintech app. CTA-gericht, hoge conversie."
+          },
+          "createdAt": "2026-03-19T10:53:44.135Z"
+        },
+        "webhookUrl": "https://automation.stijnvandepol.nl/webhook/offerte-pdf",
+        "executionMode": "production"
+      }
+    ]
+  },
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "5f3df8f20b1b3e507874502c6b6a8ac02a4e70f4290a80feec850b51ed962a44"
   }
 }
