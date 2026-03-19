@@ -3,16 +3,11 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
-async function main() {
-  console.log("🌱 Seeding database...");
-
-  // ─── Users ────────────────────────────────────────────────────────────────
+async function seedAdmin() {
   const adminPassword = await bcrypt.hash(
     process.env.SEED_ADMIN_PASSWORD ?? "admin123!",
     12
   );
-  const employeePassword = await bcrypt.hash("employee123!", 12);
-  const financePassword = await bcrypt.hash("finance123!", 12);
 
   const admin = await prisma.user.upsert({
     where: { email: process.env.SEED_ADMIN_EMAIL ?? "admin@agency.nl" },
@@ -25,6 +20,14 @@ async function main() {
     },
   });
 
+  console.log(`✅ Admin account klaar: ${admin.email}`);
+  return admin;
+}
+
+async function seedDemoData(admin: { id: string }) {
+  const employeePassword = await bcrypt.hash("employee123!", 12);
+  const financePassword = await bcrypt.hash("finance123!", 12);
+
   const devUser = await prisma.user.upsert({
     where: { email: "dev@agency.nl" },
     update: {},
@@ -36,7 +39,7 @@ async function main() {
     },
   });
 
-  const financeUser = await prisma.user.upsert({
+  await prisma.user.upsert({
     where: { email: "finance@agency.nl" },
     update: {},
     create: {
@@ -47,7 +50,7 @@ async function main() {
     },
   });
 
-  console.log("✅ Users created");
+  console.log("✅ Demo users created");
 
   // ─── Clients ──────────────────────────────────────────────────────────────
   const client1 = await prisma.client.upsert({
@@ -109,7 +112,7 @@ async function main() {
     },
   });
 
-  console.log("✅ Clients created");
+  console.log("✅ Demo clients created");
 
   // ─── Projects ─────────────────────────────────────────────────────────────
   const project1 = await prisma.projectWorkspace.upsert({
@@ -181,7 +184,7 @@ async function main() {
     },
   });
 
-  const project4 = await prisma.projectWorkspace.upsert({
+  await prisma.projectWorkspace.upsert({
     where: { slug: "hotel-atlantis-maintenance" },
     update: {},
     create: {
@@ -203,7 +206,7 @@ async function main() {
     },
   });
 
-  console.log("✅ Projects created");
+  console.log("✅ Demo projects created");
 
   // ─── Repositories ─────────────────────────────────────────────────────────
   await prisma.projectRepository.upsert({
@@ -234,8 +237,6 @@ async function main() {
     },
   });
 
-  console.log("✅ Repositories created");
-
   // ─── Communication entries ─────────────────────────────────────────────────
   const comm1 = await prisma.communicationEntry.create({
     data: {
@@ -243,23 +244,7 @@ async function main() {
       authorUserId: admin.id,
       type: CommunicationType.EMAIL,
       subject: "Akkoord op ontwerp v2",
-      content: `Van: Mark Jansen <mark@bakkerijjansen.nl>
-Aan: ons@agency.nl
-
-Goedemiddag,
-
-Ik heb het tweede ontwerp bekeken en ik ben er erg blij mee! Het kleurschema past perfect bij onze huisstijl. De webshop pagina ziet er professioneel uit.
-
-Een paar kleine puntjes:
-- Kunnen we het logo iets groter maken in de header?
-- De 'Bestel nu' knop mag wat meer opvallen, misschien oranje?
-- Is het mogelijk om een 'dagaanbieding' blok op de homepage toe te voegen?
-
-Voor de rest is het goedgekeurd. Wanneer gaan jullie beginnen met de ontwikkeling?
-
-Met vriendelijke groet,
-Mark Jansen
-Bakkerij Jansen B.V.`,
+      content: `Van: Mark Jansen <mark@bakkerijjansen.nl>\nAan: ons@agency.nl\n\nGoedemiddag,\n\nIk heb het tweede ontwerp bekeken en ik ben er erg blij mee!`,
       externalSenderName: "Mark Jansen",
       externalSenderEmail: "mark@bakkerijjansen.nl",
       isInternal: false,
@@ -269,131 +254,36 @@ Bakkerij Jansen B.V.`,
 
   await prisma.communicationEntry.create({
     data: {
-      projectId: project1.id,
-      authorUserId: devUser.id,
-      type: CommunicationType.CALL,
-      subject: "Telefoongesprek: webshop categorie-indeling",
-      content: `Gesprek met Mark Jansen (15 min).
-
-Besproken:
-- Webshop categorieën: Brood, Banket, Taarten, Seizoensproducten
-- Klant wil 'Nieuw' label op nieuwe producten (max 14 dagen)
-- Verzending: alleen PostNL, DHL later eventueel
-- Bezorggebied: heel Nederland, ophalen ook mogelijk
-- Betalingen: iDEAL verplicht, creditcard optioneel
-
-Actiepunten:
-- Sander maakt categorie-structuur klaar in WooCommerce
-- Mark stuurt productenlijst met foto's (deadline: volgende week vrijdag)`,
-      isInternal: false,
-      occurredAt: new Date("2026-02-14T10:00:00"),
-    },
-  });
-
-  const comm2 = await prisma.communicationEntry.create({
-    data: {
       projectId: project2.id,
       authorUserId: admin.id,
       type: CommunicationType.EMAIL,
       subject: "Wachten op tekstmateriaal van klant",
-      content: `Interne notitie:
-
-Eva heeft beloofd de teksten voor de 'Over ons' en 'Projecten' pagina's voor 7 maart aan te leveren. We kunnen pas verder met de homepage pas als we weten welke projecten uitgelicht worden.
-
-Reminder sturen als we voor maandag niets ontvangen hebben.`,
+      content: "Interne notitie: Eva heeft beloofd de teksten voor 7 maart aan te leveren.",
       isInternal: true,
       occurredAt: new Date("2026-03-01T09:00:00"),
     },
   });
-
-  await prisma.communicationEntry.create({
-    data: {
-      projectId: project3.id,
-      authorUserId: devUser.id,
-      type: CommunicationType.EMAIL,
-      subject: "Feedback op review link van klant",
-      content: `Van: Robin de Vries <robin@techstart.io>
-Aan: sander@agency.nl
-
-Hey Sander,
-
-De staging link ziet er geweldig uit! Een paar dingen:
-
-1. De animaties op de features-sectie zijn te snel, kunnen die iets langzamer?
-2. Op iPhone 13 is de hero-tekst te groot (overflow)
-3. Het formulier werkt, maar kunnen we een loading state toevoegen bij de submit?
-
-Launch datum staat nog steeds op 1 april. Zit je op schema?
-
-Cheers,
-Robin`,
-      externalSenderName: "Robin de Vries",
-      externalSenderEmail: "robin@techstart.io",
-      isInternal: false,
-      occurredAt: new Date("2026-03-10T16:45:00"),
-    },
-  });
-
-  console.log("✅ Communication entries created");
 
   // ─── Change Requests ───────────────────────────────────────────────────────
   const cr1 = await prisma.changeRequest.create({
     data: {
       projectId: project1.id,
       title: "Logo groter maken in header",
-      description: "Klant heeft gevraagd het logo in de header groter te maken. Momenteel is het 120px breed, klant wil minimaal 160px. Padding aanpassen zodat de header er niet te vol uitziet.",
+      description: "Klant heeft gevraagd het logo in de header groter te maken. Momenteel is het 120px breed, klant wil minimaal 160px.",
       sourceType: ChangeRequestSource.EMAIL,
       status: ChangeRequestStatus.IN_PROGRESS,
       impact: ChangeRequestImpact.SMALL,
       createdByUserId: admin.id,
       assignedToUserId: devUser.id,
-      communications: {
-        connect: [{ id: comm1.id }],
-      },
+      communications: { connect: [{ id: comm1.id }] },
     },
   });
 
-  const cr2 = await prisma.changeRequest.create({
-    data: {
-      projectId: project1.id,
-      title: "'Dagaanbieding' blok toevoegen op homepage",
-      description: `Klant wil een dynamisch 'Dagaanbieding' blok op de homepage. Het blok moet tonen:
-- Productafbeelding
-- Naam van het dagproduct
-- Normale prijs doorgestreept
-- Aanbiedingsprijs
-- 'Bestel nu' knop
-
-Dit is een WooCommerce product dat de klant zelf dagelijks instelt via een 'Featured' tag. Blok verdwijnt automatisch als er geen gefeatured product is.`,
-      sourceType: ChangeRequestSource.EMAIL,
-      status: ChangeRequestStatus.PLANNED,
-      impact: ChangeRequestImpact.MEDIUM,
-      createdByUserId: admin.id,
-      assignedToUserId: devUser.id,
-      communications: {
-        connect: [{ id: comm1.id }],
-      },
-    },
-  });
-
-  const cr3 = await prisma.changeRequest.create({
-    data: {
-      projectId: project3.id,
-      title: "Loading state toevoegen aan submit knop",
-      description: "Na het indienen van het early access formulier moet de knop een loading state tonen. Momenteel geeft de knop geen visuele feedback. Implementeren met een spinner icon en disabled state.",
-      sourceType: ChangeRequestSource.EMAIL,
-      status: ChangeRequestStatus.NEW,
-      impact: ChangeRequestImpact.SMALL,
-      createdByUserId: devUser.id,
-      assignedToUserId: devUser.id,
-    },
-  });
-
-  const cr4 = await prisma.changeRequest.create({
+  await prisma.changeRequest.create({
     data: {
       projectId: project3.id,
       title: "Hero tekst overflow fix op iPhone",
-      description: "Op iPhone 13 (375px viewport) is de hero heading te groot en loopt buiten het scherm. Moet getest worden op iPhone 12, 13, 14 en 15. Responsive font sizes aanpassen via clamp() of breakpoints.",
+      description: "Op iPhone 13 (375px viewport) is de hero heading te groot en loopt buiten het scherm.",
       sourceType: ChangeRequestSource.EMAIL,
       status: ChangeRequestStatus.IN_PROGRESS,
       impact: ChangeRequestImpact.MEDIUM,
@@ -403,48 +293,21 @@ Dit is een WooCommerce product dat de klant zelf dagelijks instelt via een 'Feat
     },
   });
 
-  const cr5 = await prisma.changeRequest.create({
-    data: {
-      projectId: project2.id,
-      title: "Mollie donatie integratie",
-      description: "Integreer Mollie betalingen voor de donatieknop. Klant wil vaste bedragen (5, 10, 25 euro) plus een vrij in te vullen bedrag. Bedankpagina na succesvolle donatie.",
-      sourceType: ChangeRequestSource.INTERNAL,
-      status: ChangeRequestStatus.REVIEWED,
-      impact: ChangeRequestImpact.LARGE,
-      createdByUserId: admin.id,
-    },
-  });
-
-  console.log("✅ Change requests created");
-
   // ─── Internal Notes ────────────────────────────────────────────────────────
   await prisma.internalNote.createMany({
     data: [
       {
         projectId: project1.id,
         authorUserId: devUser.id,
-        content: "WooCommerce installatie klaar. Bezig met het opzetten van de categorie-structuur. Productenlijst van klant nog niet ontvangen.",
-      },
-      {
-        projectId: project1.id,
-        changeRequestId: cr2.id,
-        authorUserId: devUser.id,
-        content: "Featured product logica werkt via WooCommerce product tag 'dagaanbieding'. Query in functions.php, blok via shortcode. Template klaar, nog testen.",
+        content: "WooCommerce installatie klaar. Productenlijst van klant nog niet ontvangen.",
       },
       {
         projectId: project2.id,
         authorUserId: admin.id,
-        content: "Let op: Eva is moeilijk bereikbaar. Altijd schriftelijk communiceren voor de paper trail. Deadlines expliciet benoemen in elke mail.",
-      },
-      {
-        projectId: project3.id,
-        authorUserId: devUser.id,
-        content: "Vercel deployment werkt. Branch preview URL's actief. GitHub Actions pipeline geeft groene status. Mailchimp API key staat in Vercel env vars.",
+        content: "Let op: Eva is moeilijk bereikbaar. Altijd schriftelijk communiceren.",
       },
     ],
   });
-
-  console.log("✅ Internal notes created");
 
   // ─── Invoices ──────────────────────────────────────────────────────────────
   await prisma.invoice.create({
@@ -473,51 +336,14 @@ Dit is een WooCommerce product dat de klant zelf dagelijks instelt via een 'Feat
       invoiceNumber: "2026-002",
       issueDate: new Date("2026-02-15"),
       dueDate: new Date("2026-03-16"),
-      status: InvoiceStatus.SENT,
+      status: InvoiceStatus.OVERDUE,
       subtotal: 2400.00,
       vatRate: 21,
       vatAmount: 504.00,
       totalAmount: 2904.00,
       description: "TechStart Landing Page – Volledig bedrag",
-      notes: "Betaling via Tikkie of bank. Robin bevestigd mondelinge toezegging.",
     },
   });
-
-  await prisma.invoice.create({
-    data: {
-      id: "invoice-003",
-      clientId: client4.id,
-      projectId: project4.id,
-      invoiceNumber: "2026-003",
-      issueDate: new Date("2026-03-01"),
-      dueDate: new Date("2026-03-15"),
-      status: InvoiceStatus.OVERDUE,
-      subtotal: 250.00,
-      vatRate: 21,
-      vatAmount: 52.50,
-      totalAmount: 302.50,
-      description: "Maandelijks onderhoud – Februari 2026",
-    },
-  });
-
-  await prisma.invoice.create({
-    data: {
-      id: "invoice-004",
-      clientId: client2.id,
-      projectId: project2.id,
-      invoiceNumber: "2026-004",
-      issueDate: new Date("2026-03-10"),
-      dueDate: new Date("2026-04-09"),
-      status: InvoiceStatus.DRAFT,
-      subtotal: 1800.00,
-      vatRate: 21,
-      vatAmount: 378.00,
-      totalAmount: 2178.00,
-      description: "Duurzaam Nederland Website Redesign – Eerste fase",
-    },
-  });
-
-  console.log("✅ Invoices created");
 
   // ─── Audit Logs ───────────────────────────────────────────────────────────
   await prisma.auditLog.createMany({
@@ -531,41 +357,33 @@ Dit is een WooCommerce product dat de klant zelf dagelijks instelt via een 'Feat
       },
       {
         actorUserId: admin.id,
-        entityType: "ProjectWorkspace",
-        entityId: project1.id,
-        action: "STATUS_CHANGED",
-        metadataJson: { from: "INTAKE", to: "IN_PROGRESS" },
-      },
-      {
-        actorUserId: devUser.id,
         entityType: "ChangeRequest",
         entityId: cr1.id,
         action: "CHANGE_REQUEST_CREATED",
-        metadataJson: { title: "Logo groter maken in header", projectId: project1.id },
-      },
-      {
-        actorUserId: devUser.id,
-        entityType: "ProjectRepository",
-        entityId: "repo-bakkerij-jansen",
-        action: "REPOSITORY_LINKED",
-        metadataJson: { repoUrl: "https://github.com/agency-os/bakkerij-jansen", projectId: project1.id },
-      },
-      {
-        actorUserId: admin.id,
-        entityType: "Invoice",
-        entityId: "invoice-001",
-        action: "INVOICE_MARKED_PAID",
-        metadataJson: { invoiceNumber: "2026-001", amount: 1815.00 },
+        metadataJson: { title: "Logo groter maken in header" },
       },
     ],
   });
 
-  console.log("✅ Audit logs created");
-  console.log("\n🎉 Database seeded successfully!");
-  console.log("\n📧 Login credentials:");
-  console.log(`   Admin:    ${process.env.SEED_ADMIN_EMAIL ?? "admin@agency.nl"} / ${process.env.SEED_ADMIN_PASSWORD ?? "admin123!"}`);
+  console.log("✅ Demo data created");
+  console.log("\n📧 Demo login credentials:");
   console.log("   Employee: dev@agency.nl / employee123!");
   console.log("   Finance:  finance@agency.nl / finance123!");
+}
+
+async function main() {
+  const withDemo = process.env.SEED_DEMO_DATA === "true";
+
+  console.log(`🌱 Seeding database... (demo data: ${withDemo ? "ja" : "nee"})`);
+
+  const admin = await seedAdmin();
+
+  if (withDemo) {
+    await seedDemoData(admin);
+  }
+
+  console.log("\n🎉 Database seeded successfully!");
+  console.log(`\n📧 Admin: ${process.env.SEED_ADMIN_EMAIL ?? "admin@agency.nl"} / ${process.env.SEED_ADMIN_PASSWORD ?? "admin123!"}`);
 }
 
 main()
