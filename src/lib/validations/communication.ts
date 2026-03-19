@@ -1,14 +1,6 @@
 import { z } from "zod";
 import { CommunicationType } from "@prisma/client";
-
-const optionalTrimmedString = z.preprocess(
-  (value) => {
-    if (typeof value !== "string") return value;
-    const trimmed = value.trim();
-    return trimmed === "" ? undefined : trimmed;
-  },
-  z.string().optional(),
-);
+import { optionalTrimmedString } from "@/lib/validations/shared";
 
 export const CommunicationFormSchema = z.object({
   projectId: z.string().trim().min(1, "Project is required"),

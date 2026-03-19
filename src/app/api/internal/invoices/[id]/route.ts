@@ -1,17 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { timingSafeEqual } from "node:crypto";
 import { prisma } from "@/lib/db";
-import { getInternalApiKey } from "@/lib/env";
+import { authenticateApiKey } from "@/lib/api-auth";
 import { logger } from "@/lib/logger";
-
-function authenticateApiKey(request: NextRequest): boolean {
-  const key = getInternalApiKey();
-  const header = request.headers.get("authorization");
-  if (!header?.startsWith("Bearer ")) return false;
-  const provided = Buffer.from(header.slice(7));
-  const expected = Buffer.from(key);
-  return provided.length === expected.length && timingSafeEqual(provided, expected);
-}
 
 // PATCH /api/internal/invoices/[id] — n8n callback: PDF klaar, Google Drive URL opslaan
 export async function PATCH(

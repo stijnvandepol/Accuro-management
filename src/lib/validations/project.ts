@@ -4,15 +4,7 @@ import {
   ProjectStatus,
   ProjectPriority,
 } from "@prisma/client";
-
-const optionalTrimmedString = z.preprocess(
-  (value) => {
-    if (typeof value !== "string") return value;
-    const trimmed = value.trim();
-    return trimmed === "" ? undefined : trimmed;
-  },
-  z.string().optional(),
-);
+import { optionalTrimmedString } from "@/lib/validations/shared";
 
 export const ProjectFormSchema = z.object({
   name: z.string().trim().min(2, "Project name must be at least 2 characters"),

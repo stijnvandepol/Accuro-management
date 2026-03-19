@@ -7,6 +7,7 @@ import {
   type ChangeRequestFormData,
 } from "@/lib/validations/change-request";
 import { ChangeRequestStatus } from "@prisma/client";
+import { logger } from "@/lib/logger";
 
 export async function getChangeRequests(projectId: string) {
   try {
