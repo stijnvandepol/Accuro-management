@@ -19,6 +19,10 @@ COPY . .
 RUN npx prisma generate
 
 ENV NEXT_TELEMETRY_DISABLED=1
+# Dummy secrets zodat Next.js env-validatie passeert tijdens de build.
+# De echte waarden worden bij runtime meegegeven via docker-compose / .env.
+ENV NEXTAUTH_SECRET=build-time-placeholder-not-used-at-runtime
+ENV INTERNAL_API_KEY=build-time-placeholder-not-used-at-runtime
 RUN npm run build
 
 FROM node:22-alpine AS runner
