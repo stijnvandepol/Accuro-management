@@ -1,0 +1,40 @@
+{
+  "page": {
+    "title": "Docs",
+    "description": "Algemene interne documentatie, werkwijzen, communicatie-afspraken en templates."
+  },
+  "general": {
+    "title": "Algemene docs",
+    "description": "Gebruik links je mappen en documenten. Het gekozen document opent rechts.",
+    "newFolderPlaceholder": "Nieuwe map",
+    "addFolderButton": "Map toevoegen",
+    "emptyFolders": "Nog geen mappen. Maak links je eerste map aan.",
+    "emptyFolderDocs": "Nog geen documenten.",
+    "newDocumentPrefix": "Nieuw document in",
+    "newDocumentTitlePlaceholder": "Documenttitel",
+    "newDocumentContentPlaceholder": "Schrijf hier de inhoud van het document...",
+    "addDocumentButton": "Document toevoegen",
+    "emptyPreview": "Kies links een document om het hier te openen.",
+    "cancelButton": "Annuleren",
+    "saveButton": "Opslaan",
+    "editButton": "Bewerken",
+    "copyButton": "Kopiëren",
+    "copiedButton": "Gekopieerd",
+    "deleteConfirm": "Dit document verwijderen?"
+  },
+  "client": {
+    "title": "Klantdocs",
+    "description": "Klik op een document om het rechts te openen.",
+    "newDocumentTitlePlaceholder": "Nieuwe klantnotitie",
+    "newDocumentContentPlaceholder": "Bijzonderheden, afspraken, vaste werkwijze...",
+    "addDocumentButton": "Document opslaan",
+    "emptyList": "Nog geen klantdocs.",
+    "emptyPreview": "Klik links op een klantdocument om het hier te openen.",
+    "cancelButton": "Annuleren",
+    "saveButton": "Opslaan",
+    "editButton": "Bewerken",
+    "copyButton": "Kopiëren",
+    "copiedButton": "Gekopieerd",
+    "deleteConfirm": "Dit document verwijderen?"
+  }
+}

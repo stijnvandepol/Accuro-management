@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Copy, FilePlus2, Save, Trash2 } from "lucide-react";
 import { createClientDoc, deleteDocEntry, updateDocEntry } from "@/actions/docs";
+import { renderMarkdown } from "@/lib/markdown";
 
 interface ClientDoc {
   id: string;
@@ -16,9 +17,24 @@ interface ClientDoc {
 interface Props {
   clientId: string;
   docs: ClientDoc[];
+  content: {
+    title: string;
+    description: string;
+    newDocumentTitlePlaceholder: string;
+    newDocumentContentPlaceholder: string;
+    addDocumentButton: string;
+    emptyList: string;
+    emptyPreview: string;
+    cancelButton: string;
+    saveButton: string;
+    editButton: string;
+    copyButton: string;
+    copiedButton: string;
+    deleteConfirm: string;
+  };
 }
 
-export function ClientDocsPanel({ clientId, docs }: Props) {
+export function ClientDocsPanel({ clientId, docs, content }: Props) {
   const router = useRouter();
   const { data: session } = useSession();
   const [isPending, startTransition] = useTransition();
@@ -90,7 +106,7 @@ export function ClientDocsPanel({ clientId, docs }: Props) {
 
   async function removeDoc() {
     if (!session?.user?.id || !selectedDoc) return;
-    if (!confirm("Dit document verwijderen?")) return;
+    if (!confirm(content.deleteConfirm)) return;
 
     const result = await deleteDocEntry(selectedDoc.id, session.user.id);
     if (result.success) {
@@ -110,10 +126,8 @@ export function ClientDocsPanel({ clientId, docs }: Props) {
   return (
     <div className="grid grid-cols-[320px_minmax(0,1fr)] gap-6">
       <aside className="card p-4">
-        <h3 className="text-base font-semibold text-gray-900">Klantdocs</h3>
-        <p className="mt-1 text-sm text-gray-500">
-          Klik op een document om het rechts te openen.
-        </p>
+        <h3 className="text-base font-semibold text-gray-900">{content.title}</h3>
+        <p className="mt-1 text-sm text-gray-500">{content.description}</p>
 
         <form onSubmit={handleCreateDoc} className="mt-4 space-y-3 border-t border-gray-100 pt-4">
           <input
@@ -121,18 +135,18 @@ export function ClientDocsPanel({ clientId, docs }: Props) {
             value={newDocTitle}
             onChange={(e) => setNewDocTitle(e.target.value)}
             className="form-input"
-            placeholder="Nieuwe klantnotitie"
+            placeholder={content.newDocumentTitlePlaceholder}
           />
           <textarea
             value={newDocContent}
             onChange={(e) => setNewDocContent(e.target.value)}
             className="form-textarea"
             rows={4}
-            placeholder="Bijzonderheden, afspraken, vaste werkwijze..."
+            placeholder={content.newDocumentContentPlaceholder}
           />
           <button type="submit" className="btn-primary w-full" disabled={isPending}>
             <FilePlus2 className="h-4 w-4" />
-            Document opslaan
+            {content.addDocumentButton}
           </button>
         </form>
 
@@ -153,7 +167,7 @@ export function ClientDocsPanel({ clientId, docs }: Props) {
               </button>
             ))
           ) : (
-            <p className="text-sm text-gray-400">Nog geen klantdocs.</p>
+            <p className="text-sm text-gray-400">{content.emptyList}</p>
           )}
         </div>
       </aside>
@@ -176,11 +190,11 @@ export function ClientDocsPanel({ clientId, docs }: Props) {
               />
               <div className="flex items-center justify-end gap-2">
                 <button type="button" className="btn-secondary" onClick={() => setEditingDocId(null)}>
-                  Annuleren
+                  {content.cancelButton}
                 </button>
                 <button type="button" className="btn-primary" onClick={saveDoc}>
                   <Save className="h-4 w-4" />
-                  Opslaan
+                  {content.saveButton}
                 </button>
               </div>
             </div>
@@ -190,11 +204,11 @@ export function ClientDocsPanel({ clientId, docs }: Props) {
                 <h3 className="text-xl font-semibold text-gray-900">{selectedDoc.title}</h3>
                 <div className="flex items-center gap-2">
                   <button type="button" className="btn-secondary" onClick={startEditing}>
-                    Bewerken
+                    {content.editButton}
                   </button>
                   <button type="button" className="btn-secondary" onClick={copyDoc}>
                     <Copy className="h-4 w-4" />
-                    {copied ? "Gekopieerd" : "Kopiëren"}
+                    {copied ? content.copiedButton : content.copyButton}
                   </button>
                   <button type="button" className="text-gray-400 hover:text-red-600" onClick={removeDoc}>
                     <Trash2 className="h-4 w-4" />
@@ -202,14 +216,15 @@ export function ClientDocsPanel({ clientId, docs }: Props) {
                 </div>
               </div>
 
-              <div className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
-                {selectedDoc.content}
-              </div>
+              <div
+                className="prose prose-sm max-w-none text-gray-700 prose-headings:text-gray-900 prose-p:leading-7 prose-pre:overflow-x-auto prose-pre:rounded-lg prose-pre:bg-gray-950 prose-pre:p-4 prose-pre:text-gray-100"
+                dangerouslySetInnerHTML={{ __html: renderMarkdown(selectedDoc.content) }}
+              />
             </div>
           )
         ) : (
           <div className="flex h-full min-h-[360px] items-center justify-center text-sm text-gray-400">
-            Klik links op een klantdocument om het hier te openen.
+            {content.emptyPreview}
           </div>
         )}
       </div>

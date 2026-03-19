@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { Copy, FileText, FolderPlus, FilePlus2, Save, Trash2 } from "lucide-react";
 import { createDocEntry, createDocFolder, deleteDocEntry, updateDocEntry } from "@/actions/docs";
+import { renderMarkdown } from "@/lib/markdown";
 import { DocScope } from "@prisma/client";
 
 interface DocEntry {
@@ -22,9 +23,28 @@ interface DocFolder {
 
 interface Props {
   folders: DocFolder[];
+  content: {
+    title: string;
+    description: string;
+    newFolderPlaceholder: string;
+    addFolderButton: string;
+    emptyFolders: string;
+    emptyFolderDocs: string;
+    newDocumentPrefix: string;
+    newDocumentTitlePlaceholder: string;
+    newDocumentContentPlaceholder: string;
+    addDocumentButton: string;
+    emptyPreview: string;
+    cancelButton: string;
+    saveButton: string;
+    editButton: string;
+    copyButton: string;
+    copiedButton: string;
+    deleteConfirm: string;
+  };
 }
 
-export function GeneralDocsBrowser({ folders }: Props) {
+export function GeneralDocsBrowser({ folders, content }: Props) {
   const router = useRouter();
   const { data: session } = useSession();
   const [isPending, startTransition] = useTransition();
@@ -138,7 +158,7 @@ export function GeneralDocsBrowser({ folders }: Props) {
 
   async function removeDoc() {
     if (!session?.user?.id || !selectedDoc) return;
-    if (!confirm("Dit document verwijderen?")) return;
+    if (!confirm(content.deleteConfirm)) return;
 
     const result = await deleteDocEntry(selectedDoc.id, session.user.id);
     if (result.success) {
@@ -158,10 +178,8 @@ export function GeneralDocsBrowser({ folders }: Props) {
   return (
     <div className="space-y-5">
       <div className="card p-5">
-        <h2 className="text-base font-semibold text-gray-900">Algemene docs</h2>
-        <p className="mt-1 text-sm text-gray-500">
-          Gebruik links je mappen en documenten. Het gekozen document opent rechts.
-        </p>
+        <h2 className="text-base font-semibold text-gray-900">{content.title}</h2>
+        <p className="mt-1 text-sm text-gray-500">{content.description}</p>
       </div>
 
       <div className="grid grid-cols-[320px_minmax(0,1fr)] gap-6">
@@ -172,11 +190,11 @@ export function GeneralDocsBrowser({ folders }: Props) {
               value={newFolderName}
               onChange={(e) => setNewFolderName(e.target.value)}
               className="form-input"
-              placeholder="Nieuwe map"
+              placeholder={content.newFolderPlaceholder}
             />
             <button type="submit" className="btn-secondary w-full" disabled={isPending}>
               <FolderPlus className="h-4 w-4" />
-              Map toevoegen
+              {content.addFolderButton}
             </button>
           </form>
 
@@ -220,13 +238,13 @@ export function GeneralDocsBrowser({ folders }: Props) {
                         </button>
                       ))
                     ) : (
-                      <p className="px-3 py-2 text-sm text-gray-400">Nog geen documenten.</p>
+                      <p className="px-3 py-2 text-sm text-gray-400">{content.emptyFolderDocs}</p>
                     )}
                   </div>
                 </div>
               ))
             ) : (
-              <p className="text-sm text-gray-400">Nog geen mappen. Maak links je eerste map aan.</p>
+              <p className="text-sm text-gray-400">{content.emptyFolders}</p>
             )}
           </div>
         </aside>
@@ -235,7 +253,7 @@ export function GeneralDocsBrowser({ folders }: Props) {
           {selectedFolder && (
             <div className="card p-5">
               <h3 className="text-sm font-semibold text-gray-900">
-                Nieuw document in {selectedFolder.name}
+                {content.newDocumentPrefix} {selectedFolder.name}
               </h3>
               <form onSubmit={handleCreateDoc} className="mt-4 space-y-3">
                 <input
@@ -243,19 +261,19 @@ export function GeneralDocsBrowser({ folders }: Props) {
                   value={newDocTitle}
                   onChange={(e) => setNewDocTitle(e.target.value)}
                   className="form-input"
-                  placeholder="Documenttitel"
+                  placeholder={content.newDocumentTitlePlaceholder}
                 />
                 <textarea
                   value={newDocContent}
                   onChange={(e) => setNewDocContent(e.target.value)}
                   className="form-textarea"
                   rows={5}
-                  placeholder="Schrijf hier de inhoud van het document..."
+                  placeholder={content.newDocumentContentPlaceholder}
                 />
                 <div className="flex justify-end">
                   <button type="submit" className="btn-primary" disabled={isPending}>
                     <FilePlus2 className="h-4 w-4" />
-                    Document toevoegen
+                    {content.addDocumentButton}
                   </button>
                 </div>
               </form>
@@ -280,11 +298,11 @@ export function GeneralDocsBrowser({ folders }: Props) {
                   />
                   <div className="flex items-center justify-end gap-2">
                     <button type="button" className="btn-secondary" onClick={() => setEditingDocId(null)}>
-                      Annuleren
+                      {content.cancelButton}
                     </button>
                     <button type="button" className="btn-primary" onClick={saveDoc}>
                       <Save className="h-4 w-4" />
-                      Opslaan
+                      {content.saveButton}
                     </button>
                   </div>
                 </div>
@@ -299,25 +317,26 @@ export function GeneralDocsBrowser({ folders }: Props) {
                     </div>
                     <div className="flex items-center gap-2">
                       <button type="button" className="btn-secondary" onClick={startEditing}>
-                        Bewerken
+                        {content.editButton}
                       </button>
                       <button type="button" className="btn-secondary" onClick={copyDoc}>
                         <Copy className="h-4 w-4" />
-                        {copied ? "Gekopieerd" : "Kopiëren"}
+                        {copied ? content.copiedButton : content.copyButton}
                       </button>
                       <button type="button" className="text-gray-400 hover:text-red-600" onClick={removeDoc}>
                         <Trash2 className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
-                  <div className="whitespace-pre-wrap text-sm leading-7 text-gray-700">
-                    {selectedDoc.content}
-                  </div>
+                  <div
+                    className="prose prose-sm max-w-none text-gray-700 prose-headings:text-gray-900 prose-p:leading-7 prose-pre:overflow-x-auto prose-pre:rounded-lg prose-pre:bg-gray-950 prose-pre:p-4 prose-pre:text-gray-100"
+                    dangerouslySetInnerHTML={{ __html: renderMarkdown(selectedDoc.content) }}
+                  />
                 </div>
               )
             ) : (
               <div className="flex h-full min-h-[420px] items-center justify-center text-sm text-gray-400">
-                Kies links een document om het hier te openen.
+                {content.emptyPreview}
               </div>
             )}
           </div>

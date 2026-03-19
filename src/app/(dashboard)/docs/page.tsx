@@ -1,8 +1,10 @@
 import { ensureGeneralDocs, getDocFolders } from "@/actions/docs";
 import { GeneralDocsBrowser } from "@/components/docs/general-docs-browser";
+import { loadDocsPageContent } from "@/lib/content";
 import { DocScope } from "@prisma/client";
 
 export default async function DocsPage() {
+  const pageContent = await loadDocsPageContent();
   await ensureGeneralDocs();
   const result = await getDocFolders(DocScope.GENERAL);
   const folders = result.success ? result.folders ?? [] : [];
@@ -10,14 +12,13 @@ export default async function DocsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="page-title">Docs</h1>
-        <p className="mt-1 text-sm text-gray-500">
-          Algemene interne documentatie, werkwijzen, communicatie-afspraken en templates.
-        </p>
+        <h1 className="page-title">{pageContent.page.title}</h1>
+        <p className="mt-1 text-sm text-gray-500">{pageContent.page.description}</p>
       </div>
 
       <GeneralDocsBrowser
         folders={folders}
+        content={pageContent.general}
       />
     </div>
   );

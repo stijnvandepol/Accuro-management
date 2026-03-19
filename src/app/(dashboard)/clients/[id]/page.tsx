@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getClient } from "@/actions/clients";
 import { getClientDocs } from "@/actions/docs";
+import { loadDocsPageContent } from "@/lib/content";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import {
   Building2,
@@ -30,6 +31,7 @@ export default async function ClientDetailPage({
   }
 
   const client = result.client;
+  const docsPageContent = await loadDocsPageContent();
   const docsResult = await getClientDocs(client.id);
   const docs = docsResult.success ? docsResult.docs ?? [] : [];
 
@@ -228,6 +230,7 @@ export default async function ClientDetailPage({
         <ClientDocsPanel
           clientId={client.id}
           docs={docs}
+          content={docsPageContent.client}
         />
       </div>
     </div>
