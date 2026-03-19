@@ -20,6 +20,7 @@ export async function POST(request: NextRequest) {
     bodyHtml?: string;
     threadId?: string;
     receivedAt?: string;
+    attachments?: { name: string; mimeType: string; size: number }[];
   };
 
   try {
@@ -59,6 +60,7 @@ export async function POST(request: NextRequest) {
       bodyText: body.bodyText ?? null,
       bodyHtml: body.bodyHtml ?? null,
       threadId: body.threadId ?? null,
+      attachmentsMeta: body.attachments && body.attachments.length > 0 ? body.attachments : undefined,
       clientId: client?.id ?? null,
       receivedAt: body.receivedAt ? new Date(body.receivedAt) : new Date(),
     },
