@@ -217,12 +217,18 @@ export function ProjectProposalsPanel({ client, project, proposals }: Props) {
         </div>
       )}
 
+      {sendError && (
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {sendError}
+        </div>
+      )}
+
       {proposals.length > 0 ? (
         <div className="space-y-3">
           {proposals.map((proposal) => (
             <div key={proposal.id} className="card p-4">
               <div className="flex items-start justify-between gap-4">
-                <div>
+                <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-gray-400" />
                     <h4 className="font-medium text-gray-900">{proposal.title}</h4>
@@ -232,11 +238,25 @@ export function ProjectProposalsPanel({ client, project, proposals }: Props) {
                     {proposal.deliveryTime ?? "Geen doorlooptijd ingevuld"} · {proposal.status}
                   </p>
                 </div>
-                {proposal.amount && (
-                  <span className="text-sm font-semibold text-gray-700">
-                    €{typeof proposal.amount === "object" ? proposal.amount.toNumber().toFixed(2) : proposal.amount.toFixed(2)}
-                  </span>
-                )}
+                <div className="flex shrink-0 flex-col items-end gap-2">
+                  {proposal.amount && (
+                    <span className="text-sm font-semibold text-gray-700">
+                      €{typeof proposal.amount === "object" ? proposal.amount.toNumber().toFixed(2) : proposal.amount.toFixed(2)}
+                    </span>
+                  )}
+                  {proposal.status !== "SENT_TO_N8N" ? (
+                    <button
+                      type="button"
+                      className="btn-primary text-xs"
+                      disabled={sendingId === proposal.id}
+                      onClick={() => handleSendToN8n(proposal.id)}
+                    >
+                      {sendingId === proposal.id ? "Bezig…" : "PDF via n8n"}
+                    </button>
+                  ) : (
+                    <span className="text-xs text-green-600 font-medium">✓ Verstuurd naar n8n</span>
+                  )}
+                </div>
               </div>
             </div>
           ))}

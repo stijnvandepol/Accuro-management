@@ -1,0 +1,129 @@
+{
+  "name": "Offerte PDF → Google Drive",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "offerte-pdf",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook – Ontvang offerte",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Bouw het HTML-document op voor de offerte\nconst d = $input.first().json.body;\n\nconst formatEuro = (v) => v != null\n  ? new Intl.NumberFormat('nl-NL', { style: 'currency', currency: 'EUR' }).format(v)\n  : null;\n\nconst dateNL = new Intl.DateTimeFormat('nl-NL', { dateStyle: 'long' }).format(new Date());\n\nconst scopeHtml = d.scope\n  ? d.scope.split('\\n').map(l => `<li>${l}</li>`).join('')\n  : '';\n\nconst html = `<!DOCTYPE html>\n<html lang=\"nl\">\n<head>\n  <meta charset=\"UTF-8\" />\n  <style>\n    * { box-sizing: border-box; margin: 0; padding: 0; }\n    body { font-family: 'Helvetica Neue', Arial, sans-serif; font-size: 13px; color: #1a1a1a; padding: 48px; }\n    .header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 48px; }\n    .logo { font-size: 22px; font-weight: 700; color: #111; }\n    .meta { text-align: right; font-size: 12px; color: #555; line-height: 1.8; }\n    h1 { font-size: 26px; font-weight: 700; margin-bottom: 4px; }\n    .subtitle { font-size: 13px; color: #666; margin-bottom: 36px; }\n    .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 32px; margin-bottom: 36px; }\n    .block-label { font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: #999; margin-bottom: 6px; }\n    .block-value { font-size: 13px; line-height: 1.7; }\n    section { margin-bottom: 28px; }\n    section h2 { font-size: 13px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: #777; border-bottom: 1px solid #e5e7eb; padding-bottom: 6px; margin-bottom: 12px; }\n    section p, section ul { font-size: 13px; line-height: 1.8; color: #333; }\n    section ul { padding-left: 18px; }\n    .price-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 28px; }\n    .price-label { font-size: 13px; font-weight: 600; color: #374151; }\n    .price-amount { font-size: 22px; font-weight: 700; color: #111; }\n    .footer { margin-top: 48px; font-size: 11px; color: #aaa; text-align: center; border-top: 1px solid #f0f0f0; padding-top: 16px; }\n  </style>\n</head>\n<body>\n  <div class=\"header\">\n    <div class=\"logo\">Agency OS</div>\n    <div class=\"meta\">\n      <strong>OFFERTE</strong><br/>\n      Datum: ${dateNL}<br/>\n      Ref: ${d.proposalId.slice(-8).toUpperCase()}\n    </div>\n  </div>\n\n  <h1>${d.title}</h1>\n  <p class=\"subtitle\">Opgesteld voor ${d.recipientCompany ?? d.recipientName ?? ''}</p>\n\n  <div class=\"two-col\">\n    <div>\n      <div class=\"block-label\">Aan</div>\n      <div class=\"block-value\">\n        ${d.recipientName ?? ''}<br/>\n        ${d.recipientCompany ?? ''}<br/>\n        ${(d.recipientAddress ?? '').replace(/\\n/g, '<br/>')}\n      </div>\n    </div>\n    <div>\n      <div class=\"block-label\">Contactgegevens</div>\n      <div class=\"block-value\">${d.recipientEmail ?? ''}</div>\n    </div>\n  </div>\n\n  <section>\n    <h2>Samenvatting</h2>\n    <p>${d.summary.replace(/\\n/g, '<br/>')}</p>\n  </section>\n\n  ${scopeHtml ? `\n  <section>\n    <h2>Scope van het werk</h2>\n    <ul>${scopeHtml}</ul>\n  </section>` : ''}\n\n  ${d.deliveryTime ? `\n  <section>\n    <h2>Doorlooptijd</h2>\n    <p>${d.deliveryTime}</p>\n  </section>` : ''}\n\n  ${d.amount != null ? `\n  <div class=\"price-box\">\n    <span class=\"price-label\">${d.priceLabel ?? 'Projectprijs'}</span>\n    <span class=\"price-amount\">${formatEuro(d.amount)}</span>\n  </div>` : ''}\n\n  ${d.notes ? `\n  <section>\n    <h2>Opmerkingen</h2>\n    <p>${d.notes.replace(/\\n/g, '<br/>')}</p>\n  </section>` : ''}\n\n  <div class=\"footer\">\n    Deze offerte is vrijblijvend en geldig voor 30 dagen.\n  </div>\n</body>\n</html>`;\n\nreturn [{ json: { ...d, html } }];"
+      },
+      "id": "build-html",
+      "name": "Bouw HTML offerte",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://htmlcsstoimage.com/demo_run",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "html", "value": "={{ $json.html }}" },
+            { "name": "selector", "value": "body" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "html-to-pdf",
+      "name": "HTML → PDF (Gotenberg)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300],
+      "notes": "Vervang deze node door de Gotenberg of HTMLtoPDF node die je zelf host. Zie README."
+    },
+    {
+      "parameters": {
+        "driveId": { "mode": "list", "value": "My Drive" },
+        "folderId": {
+          "mode": "id",
+          "value": "VERVANG_MET_JE_GOOGLE_DRIVE_FOLDER_ID"
+        },
+        "name": "=Offerte - {{ $('Bouw HTML offerte').item.json.recipientCompany ?? $('Bouw HTML offerte').item.json.recipientName }} - {{ $now.format('yyyy-MM-dd') }}.pdf",
+        "inputDataFieldName": "data",
+        "options": {}
+      },
+      "id": "google-drive-upload",
+      "name": "Upload naar Google Drive",
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [960, 300]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "={{ $env.TICKET_SYSTEM_URL }}/api/internal/proposals/{{ $('Bouw HTML offerte').item.json.proposalId }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Authorization", "value": "=Bearer {{ $env.TICKET_INTERNAL_API_KEY }}" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "driveUrl", "value": "={{ $json.webViewLink }}" },
+            { "name": "driveFileId", "value": "={{ $json.id }}" }
+          ]
+        },
+        "options": {}
+      },
+      "id": "callback-ticket-system",
+      "name": "Callback → Ticket systeem",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1200, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"ok\": true }",
+        "options": {}
+      },
+      "id": "webhook-response",
+      "name": "Webhook Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1440, 300]
+    }
+  ],
+  "connections": {
+    "Webhook – Ontvang offerte": {
+      "main": [[{ "node": "Bouw HTML offerte", "type": "main", "index": 0 }]]
+    },
+    "Bouw HTML offerte": {
+      "main": [[{ "node": "HTML → PDF (Gotenberg)", "type": "main", "index": 0 }]]
+    },
+    "HTML → PDF (Gotenberg)": {
+      "main": [[{ "node": "Upload naar Google Drive", "type": "main", "index": 0 }]]
+    },
+    "Upload naar Google Drive": {
+      "main": [[{ "node": "Callback → Ticket systeem", "type": "main", "index": 0 }]]
+    },
+    "Callback → Ticket systeem": {
+      "main": [[{ "node": "Webhook Response", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
