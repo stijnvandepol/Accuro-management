@@ -6,6 +6,7 @@ export const InvoiceFormSchema = z.object({
   projectId: z.string().optional(),
   invoiceNumber: z.string().min(1, "Invoice number is required"),
   issueDate: z.string().min(1, "Issue date is required"),
+  serviceDate: z.string().optional(),
   dueDate: z.string().min(1, "Due date is required"),
   status: z.nativeEnum(InvoiceStatus),
   subtotal: z.number().positive("Subtotal must be a positive number"),

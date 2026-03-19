@@ -57,6 +57,7 @@ export function InvoiceForm({
     projectId: defaultProjectId ?? "",
     invoiceNumber: defaultInvoiceNumber,
     issueDate: today,
+    serviceDate: "",
     dueDate: thirtyDaysLater,
     status: "DRAFT" as InvoiceStatus,
     subtotal: "",
@@ -107,6 +108,7 @@ export function InvoiceForm({
           projectId: form.projectId || undefined,
           invoiceNumber: form.invoiceNumber,
           issueDate: form.issueDate,
+          serviceDate: form.serviceDate || undefined,
           dueDate: form.dueDate,
           status: form.status,
           subtotal: parseFloat(form.subtotal),
@@ -225,6 +227,20 @@ export function InvoiceForm({
                 type="date"
                 required
                 value={form.issueDate}
+                onChange={handleChange}
+                className="form-input"
+              />
+            </div>
+            <div>
+              <label htmlFor="inv-serviceDate" className="form-label">
+                Leverdatum
+                <span className="ml-1 text-xs text-gray-400">(datum van de dienst)</span>
+              </label>
+              <input
+                id="inv-serviceDate"
+                name="serviceDate"
+                type="date"
+                value={form.serviceDate}
                 onChange={handleChange}
                 className="form-input"
               />
