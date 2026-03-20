@@ -68,7 +68,6 @@ export function CreateProjectForm({ clients, users, defaultClientId }: Props) {
     status: "INTAKE" as ProjectStatus,
     priority: "MEDIUM" as ProjectPriority,
     description: "",
-    intakeSummary: "",
     scope: "",
     techStack: "",
     domainName: "",

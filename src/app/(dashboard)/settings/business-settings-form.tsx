@@ -41,7 +41,7 @@ export function BusinessSettingsForm({ initial }: Props) {
     setSaved(false);
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!session?.user?.id) return;
     setLoading(true);
@@ -313,15 +313,6 @@ export function BusinessSettingsForm({ initial }: Props) {
               />
             </div>
 
-            <div className="col-span-2">
-              <label className="form-label">E-mailhandtekening</label>
-              <textarea
-                className="form-textarea"
-                rows={4}
-                onChange={handleChange}
-                placeholder="Met vriendelijke groet..."
-              />
-            </div>
           </div>
         </section>
       </div>
