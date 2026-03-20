@@ -8,6 +8,7 @@ import {
   getRepositoryInfo,
   checkCopilotAgent,
   createIssue,
+  addIssueAssignees,
   parseOwnerRepo,
   GitHubApiError,
 } from "@/services/githubService";
@@ -106,6 +107,9 @@ export async function promptGithubAgent(
 
     const { owner, repo: repoName } = parseOwnerRepo(repo.repoName);
 
+    // Check Copilot availability to get the actual bot login
+    const copilot = await checkCopilotAgent(owner, repoName);
+
     const bodyParts = [
       prompt.trim(),
       "",
@@ -121,11 +125,16 @@ export async function promptGithubAgent(
 
     const title = prompt.trim().split("\n")[0].slice(0, 100);
 
+    // Create issue without assignees (GitHub silently ignores bot assignees on creation)
     const issue = await createIssue(owner, repoName, {
       title,
       body: bodyParts.join("\n"),
-      assignees: ["copilot-swe-agent"],
     });
+
+    // Assign to Copilot via separate call using the actual login from GraphQL
+    if (copilot.available && copilot.login) {
+      await addIssueAssignees(owner, repoName, issue.number, [copilot.login]);
+    }
 
     const agentRun = await prisma.agentRun.create({
       data: {

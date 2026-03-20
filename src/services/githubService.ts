@@ -234,6 +234,29 @@ export async function checkCopilotAgent(
   }
 }
 
+// ─── Add assignees to an existing issue ──────────────────────────────────────
+
+export async function addIssueAssignees(
+  owner: string,
+  repo: string,
+  issueNumber: number,
+  assignees: string[],
+): Promise<void> {
+  const res = await githubRest(
+    `/repos/${owner}/${repo}/issues/${issueNumber}/assignees`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ assignees }),
+    },
+  );
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new GitHubApiError(res.status, `Failed to add assignees: ${body}`);
+  }
+}
+
 // ─── Create issue ─────────────────────────────────────────────────────────────
 
 export async function createIssue(
