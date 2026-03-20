@@ -281,3 +281,38 @@ export async function getDashboardStats() {
     return { success: false, error: "Failed to fetch dashboard stats" };
   }
 }
+
+export async function deleteProject(id: string, actorUserId: string) {
+  try {
+    const project = await prisma.projectWorkspace.findUnique({
+      where: { id },
+      select: { name: true },
+    });
+
+    if (!project) {
+      return { success: false, error: "Project niet gevonden." };
+    }
+
+    await prisma.$transaction([
+      prisma.invoice.updateMany({
+        where: { projectId: id },
+        data: { projectId: null },
+      }),
+      prisma.projectWorkspace.delete({ where: { id } }),
+    ]);
+
+    await createAuditLog({
+      actorUserId,
+      entityType: "Project",
+      entityId: id,
+      action: "DELETE",
+      metadata: { name: project.name },
+    });
+
+    revalidatePath("/projects");
+    return { success: true };
+  } catch (error) {
+    logger.error("Failed to delete project", error, { projectId: id });
+    return { success: false, error: "Verwijderen mislukt." };
+  }
+}

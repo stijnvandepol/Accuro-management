@@ -17,6 +17,7 @@ import {
 import { ProjectStatusBadge, InvoiceStatusBadge } from "@/components/projects/status-badge";
 import { ProposalPlaceholderButton } from "@/components/ui/proposal-placeholder-button";
 import { ClientDocsPanel } from "@/components/docs/client-docs-panel";
+import { DeleteClientButton } from "@/components/clients/delete-client-button";
 
 export default async function ClientDetailPage({
   params,
@@ -52,10 +53,13 @@ export default async function ClientDetailPage({
             <p className="text-sm text-gray-500 mt-1">{client.contactName}</p>
           )}
         </div>
-        <Link href={`/clients/${client.id}/edit`} className="btn-secondary">
-          <Pencil className="h-4 w-4" />
-          Klant bewerken
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href={`/clients/${client.id}/edit`} className="btn-secondary">
+            <Pencil className="h-4 w-4" />
+            Klant bewerken
+          </Link>
+          <DeleteClientButton clientId={client.id} clientName={client.companyName} />
+        </div>
       </div>
 
       <div className="grid grid-cols-3 gap-6">

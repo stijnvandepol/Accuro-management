@@ -27,6 +27,7 @@ import { ProjectGithubTab } from "./github-tab";
 import { ProjectOverviewEditor } from "@/components/projects/project-overview-editor";
 import { ProjectLogbookQuickNote } from "@/components/projects/project-logbook-quick-note";
 import { ProjectProposalsPanel } from "@/components/proposals/project-proposals-panel";
+import { DeleteProjectButton } from "@/components/projects/delete-project-button";
 
 const TABS = [
   { id: "overview", label: "Overzicht" },
@@ -157,6 +158,7 @@ export default async function ProjectDetailPage({
               )}
             </div>
           </div>
+          <DeleteProjectButton projectId={project.id} projectName={project.name} />
         </div>
 
         <div className="mt-5 grid grid-cols-3 gap-4 border-t border-gray-100 pt-5">
