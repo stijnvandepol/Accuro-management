@@ -7,6 +7,7 @@ import { generateSlug } from "@/lib/utils";
 import { CommunicationType, ProjectStatus, InvoiceStatus, Prisma } from "@prisma/client";
 import { logger } from "@/lib/logger";
 import { revalidatePath } from "next/cache";
+import { ZodError } from "zod";
 
 const projectDetailInclude = {
   client: true,
@@ -71,7 +72,7 @@ export async function getProject(id: string) {
       return { success: false, error: "Project not found" };
     }
 
-    return { success: true, project };
+    return { success: true as const, project };
   } catch (error) {
     logger.error("Failed to fetch project", error, { projectId: id });
     return { success: false, error: "Failed to fetch project" };
@@ -89,7 +90,7 @@ export async function getProjectBySlug(slug: string) {
       return { success: false, error: "Project not found" };
     }
 
-    return { success: true, project };
+    return { success: true as const, project };
   } catch (error) {
     logger.error("Failed to fetch project by slug", error, { slug });
     return { success: false, error: "Failed to fetch project" };
@@ -144,10 +145,14 @@ export async function createProject(data: ProjectFormData, actorUserId: string) 
     });
 
     revalidatePath("/projects");
-    return { success: true, project };
+    return { success: true as const, project };
   } catch (error) {
     logger.error("Failed to create project", error);
-    return { success: false, error: "Failed to create project" };
+    if (error instanceof ZodError) {
+      const fieldErrors = error.errors.map(err => ({ field: err.path.join('.'), message: err.message }));
+      return { success: false as const, error: "Validatiefout", fieldErrors };
+    }
+    return { success: false as const, error: "Project aanmaken mislukt" };
   }
 }
 

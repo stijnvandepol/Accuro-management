@@ -67,7 +67,11 @@ export async function createCommunicationEntry(
     logger.error("Failed to create communication entry", error, {
       projectId: data.projectId,
     });
-    return { success: false, error: "Failed to create communication entry" };
+    if (error instanceof ZodError) {
+      const fieldErrors = error.errors.map(err => ({ field: err.path.join('.'), message: err.message }));
+      return { success: false as const, error: "Validatiefout", fieldErrors };
+    }
+    return { success: false as const, error: "Communicatie aanmaken mislukt" };
   }
 }
 
@@ -121,7 +125,7 @@ export async function deleteCommunicationEntry(
       },
     });
 
-    return { success: true };
+    return { success: true as const };
   } catch (error) {
     logger.error("Failed to delete communication entry", error, { entryId: id });
     return { success: false, error: "Failed to delete communication entry" };

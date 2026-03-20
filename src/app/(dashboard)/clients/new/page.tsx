@@ -12,6 +12,7 @@ export default function NewClientPage() {
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState({
     companyName: "",
@@ -23,16 +24,30 @@ export default function NewClientPage() {
     invoiceDetails: "",
   });
 
+  function getFieldError(name: string): string | undefined {
+    return fieldErrors[name];
+  }
+
   function handleChange(
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name } = e.target;
+    setForm((prev) => ({ ...prev, [name]: e.target.value }));
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const updated = { ...prev };
+        delete updated[name];
+        return updated;
+      });
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!session?.user?.id) return;
     setError(null);
+    setFieldErrors({});
     setLoading(true);
 
     try {
@@ -40,6 +55,14 @@ export default function NewClientPage() {
       if (result.success && result.client) {
         router.push(`/clients/${result.client.id}`);
       } else {
+        // Handle field-level errors from server action
+        if ('fieldErrors' in result && result.fieldErrors && Array.isArray(result.fieldErrors)) {
+          const errors: Record<string, string> = {};
+          result.fieldErrors.forEach((err: { field: string; message: string }) => {
+            errors[err.field] = err.message;
+          });
+          setFieldErrors(errors);
+        }
         setError(result.error ?? "Klant aanmaken mislukt.");
       }
     } catch {
@@ -88,9 +111,12 @@ export default function NewClientPage() {
                 required
                 value={form.companyName}
                 onChange={handleChange}
-                className="form-input"
+                className={`form-input ${getFieldError('companyName') ? 'border-red-500 bg-red-50' : ''}`}
                 placeholder="Acme B.V."
               />
+              {getFieldError('companyName') && (
+                <p className="mt-1 text-sm text-red-600">{getFieldError('companyName')}</p>
+              )}
             </div>
             <div>
               <label htmlFor="contactName" className="form-label">
@@ -103,9 +129,12 @@ export default function NewClientPage() {
                 required
                 value={form.contactName}
                 onChange={handleChange}
-                className="form-input"
+                className={`form-input ${getFieldError('contactName') ? 'border-red-500 bg-red-50' : ''}`}
                 placeholder="Jan Janssen"
               />
+              {getFieldError('contactName') && (
+                <p className="mt-1 text-sm text-red-600">{getFieldError('contactName')}</p>
+              )}
             </div>
             <div>
               <label htmlFor="email" className="form-label">
@@ -118,9 +147,12 @@ export default function NewClientPage() {
                 required
                 value={form.email}
                 onChange={handleChange}
-                className="form-input"
+                className={`form-input ${getFieldError('email') ? 'border-red-500 bg-red-50' : ''}`}
                 placeholder="jan@acme.nl"
               />
+              {getFieldError('email') && (
+                <p className="mt-1 text-sm text-red-600">{getFieldError('email')}</p>
+              )}
             </div>
             <div>
               <label htmlFor="phone" className="form-label">
@@ -132,9 +164,12 @@ export default function NewClientPage() {
                 type="tel"
                 value={form.phone}
                 onChange={handleChange}
-                className="form-input"
+                className={`form-input ${getFieldError('phone') ? 'border-red-500 bg-red-50' : ''}`}
                 placeholder="+31 6 12345678"
               />
+              {getFieldError('phone') && (
+                <p className="mt-1 text-sm text-red-600">{getFieldError('phone')}</p>
+              )}
             </div>
             <div>
               <label htmlFor="address" className="form-label">
@@ -146,9 +181,12 @@ export default function NewClientPage() {
                 type="text"
                 value={form.address}
                 onChange={handleChange}
-                className="form-input"
+                className={`form-input ${getFieldError('address') ? 'border-red-500 bg-red-50' : ''}`}
                 placeholder="Straat 1, 1234 AB Amsterdam"
               />
+              {getFieldError('address') && (
+                <p className="mt-1 text-sm text-red-600">{getFieldError('address')}</p>
+              )}
             </div>
           </div>
         </div>
@@ -169,9 +207,12 @@ export default function NewClientPage() {
                 rows={3}
                 value={form.invoiceDetails}
                 onChange={handleChange}
-                className="form-textarea"
+                className={`form-textarea ${getFieldError('invoiceDetails') ? 'border-red-500 bg-red-50' : ''}`}
                 placeholder="Betaaltermijnen, afwijkend factuuradres, enz."
               />
+              {getFieldError('invoiceDetails') && (
+                <p className="mt-1 text-sm text-red-600">{getFieldError('invoiceDetails')}</p>
+              )}
             </div>
             <div>
               <label htmlFor="notes" className="form-label">
@@ -183,9 +224,12 @@ export default function NewClientPage() {
                 rows={3}
                 value={form.notes}
                 onChange={handleChange}
-                className="form-textarea"
+                className={`form-textarea ${getFieldError('notes') ? 'border-red-500 bg-red-50' : ''}`}
                 placeholder="Interne notities over deze klant…"
               />
+              {getFieldError('notes') && (
+                <p className="mt-1 text-sm text-red-600">{getFieldError('notes')}</p>
+              )}
             </div>
           </div>
         </div>

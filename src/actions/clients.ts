@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { createAuditLog } from "@/lib/audit";
 import { ClientFormSchema, type ClientFormData } from "@/lib/validations/client";
 import { logger } from "@/lib/logger";
+import { ZodError } from "zod";
 
 export async function getClients() {
   try {
@@ -76,10 +77,14 @@ export async function createClient(data: ClientFormData, actorUserId: string) {
       metadata: { companyName: client.companyName },
     });
 
-    return { success: true, client };
+    return { success: true as const, client };
   } catch (error) {
     logger.error("Failed to create client", error);
-    return { success: false, error: "Failed to create client" };
+    if (error instanceof ZodError) {
+      const fieldErrors = error.errors.map(err => ({ field: err.path.join('.'), message: err.message }));
+      return { success: false as const, error: "Validatiefout", fieldErrors };
+    }
+    return { success: false as const, error: "Klant aanmaken mislukt" };
   }
 }
 
@@ -112,10 +117,14 @@ export async function updateClient(
       metadata: { companyName: client.companyName },
     });
 
-    return { success: true };
+    return { success: true as const };
   } catch (error) {
     logger.error("Failed to update client", error, { clientId: id });
-    return { success: false, error: "Failed to update client" };
+    if (error instanceof ZodError) {
+      const fieldErrors = error.errors.map(err => ({ field: err.path.join('.'), message: err.message }));
+      return { success: false as const, error: "Validatiefout", fieldErrors };
+    }
+    return { success: false as const, error: "Klant bijwerken mislukt" };
   }
 }
 

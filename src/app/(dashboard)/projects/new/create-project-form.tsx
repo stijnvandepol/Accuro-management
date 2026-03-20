@@ -58,6 +58,7 @@ export function CreateProjectForm({ clients, users, defaultClientId }: Props) {
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [tagsInput, setTagsInput] = useState("");
 
   const [form, setForm] = useState({
@@ -76,18 +77,32 @@ export function CreateProjectForm({ clients, users, defaultClientId }: Props) {
     ownerUserId: "",
   });
 
+  function getFieldError(name: string): string | undefined {
+    return fieldErrors[name];
+  }
+
   function handleChange(
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name } = e.target;
+    setForm((prev) => ({ ...prev, [name]: e.target.value }));
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const updated = { ...prev };
+        delete updated[name];
+        return updated;
+      });
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!session?.user?.id) return;
     setError(null);
+    setFieldErrors({});
     setLoading(true);
 
     try {
@@ -109,6 +124,14 @@ export function CreateProjectForm({ clients, users, defaultClientId }: Props) {
       if (result.success && result.project) {
         router.push(`/projects/${result.project.id}`);
       } else {
+        // Handle field-level errors from server action
+        if ('fieldErrors' in result && result.fieldErrors && Array.isArray(result.fieldErrors)) {
+          const errors: Record<string, string> = {};
+          result.fieldErrors.forEach((err: { field: string; message: string }) => {
+            errors[err.field] = err.message;
+          });
+          setFieldErrors(errors);
+        }
         setError(result.error ?? "Project aanmaken mislukt.");
       }
     } catch {
@@ -147,9 +170,12 @@ export function CreateProjectForm({ clients, users, defaultClientId }: Props) {
                 required
                 value={form.name}
                 onChange={handleChange}
-                className="form-input"
+                className={`form-input ${getFieldError('name') ? 'border-red-500 bg-red-50' : ''}`}
                 placeholder="Nieuwe website voor Acme"
               />
+              {getFieldError('name') && (
+                <p className="mt-1 text-sm text-red-600">{getFieldError('name')}</p>
+              )}
             </div>
 
             <div>

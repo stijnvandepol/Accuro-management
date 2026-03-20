@@ -25,6 +25,7 @@ export function CommunicationForm({ projectId, onSuccess }: Props) {
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const now = new Date();
   const localNow = new Date(now.getTime() - now.getTimezoneOffset() * 60000)
@@ -42,12 +43,25 @@ export function CommunicationForm({ projectId, onSuccess }: Props) {
     links: "",
   });
 
+  function getFieldError(name: string): string | undefined {
+    return fieldErrors[name];
+  }
+
   function handleChange(
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
     >
   ) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+    const { name } = e.target;
+    setForm((prev) => ({ ...prev, [name]: e.target.value }));
+    // Clear field error when user starts typing
+    if (fieldErrors[name]) {
+      setFieldErrors((prev) => {
+        const updated = { ...prev };
+        delete updated[name];
+        return updated;
+      });
+    }
   }
 
   function handleCheckbox(e: React.ChangeEvent<HTMLInputElement>) {
@@ -58,6 +72,7 @@ export function CommunicationForm({ projectId, onSuccess }: Props) {
     e.preventDefault();
     if (!session?.user?.id) return;
     setError(null);
+    setFieldErrors({});
     setLoading(true);
 
     try {
@@ -84,6 +99,14 @@ export function CommunicationForm({ projectId, onSuccess }: Props) {
       if (result.success) {
         onSuccess();
       } else {
+        // Handle field-level errors from server action
+        if ('fieldErrors' in result && result.fieldErrors && Array.isArray(result.fieldErrors)) {
+          const errors: Record<string, string> = {};
+          result.fieldErrors.forEach((err: { field: string; message: string }) => {
+            errors[err.field] = err.message;
+          });
+          setFieldErrors(errors);
+        }
         setError(result.error ?? "Item aanmaken mislukt.");
       }
     } catch {
@@ -149,9 +172,12 @@ export function CommunicationForm({ projectId, onSuccess }: Props) {
           required
           value={form.subject}
           onChange={handleChange}
-          className="form-input"
+          className={`form-input ${getFieldError('subject') ? 'border-red-500 bg-red-50' : ''}`}
           placeholder="Waar ging deze communicatie over?"
         />
+        {getFieldError('subject') && (
+          <p className="mt-1 text-sm text-red-600">{getFieldError('subject')}</p>
+        )}
       </div>
 
       {isExternal && (
