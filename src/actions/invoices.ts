@@ -288,7 +288,11 @@ export async function sendInvoiceToN8n(invoiceId: string, actorUserId: string) {
 
     await prisma.invoice.update({
       where: { id: invoiceId },
-      data: { status: InvoiceStatus.SENT },
+      data: {
+        sentToN8nCount: { increment: 1 },
+        lastSentToN8nAt: new Date(),
+        status: InvoiceStatus.SENT,
+      },
     });
 
     await createAuditLog({
@@ -296,7 +300,7 @@ export async function sendInvoiceToN8n(invoiceId: string, actorUserId: string) {
       entityType: "Invoice",
       entityId: invoiceId,
       action: "UPDATE",
-      metadata: { status: "SENT", sentViaN8n: true },
+      metadata: { action: "SENT_TO_N8N", sentCount: invoice.sentToN8nCount + 1 },
     });
 
     return { success: true };

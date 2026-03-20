@@ -298,6 +298,8 @@ model Invoice {
   description   String
   notes         String?
   paidAt        DateTime?
+  sentToN8nCount Int          @default(0)
+  lastSentToN8nAt DateTime?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
@@ -327,6 +329,8 @@ model ProposalDraft {
   notes             String?
   payloadJson       Json?
   status            ProposalDraftStatus @default(DRAFT)
+  sentToN8nCount    Int                 @default(0)
+  lastSentToN8nAt   DateTime?
   createdAt         DateTime            @default(now())
   updatedAt         DateTime            @updatedAt
 

@@ -303,18 +303,17 @@ export function ProjectProposalsPanel({
                         €{typeof proposal.amount === "object" ? proposal.amount.toNumber().toFixed(2) : proposal.amount.toFixed(2)}
                       </span>
                     )}
-                    {proposal.status !== "SENT_TO_N8N" ? (
-                      <button
-                        type="button"
-                        className="btn-primary text-xs"
-                        disabled={sendingId === proposal.id || !n8nEnabled}
-                        onClick={() => handleSendToN8n(proposal.id)}
-                        title={!n8nEnabled ? "n8n webhook is nog niet ingesteld" : undefined}
-                      >
-                        {!n8nEnabled ? "n8n niet ingesteld" : sendingId === proposal.id ? "Bezig…" : "PDF via n8n"}
-                      </button>
-                    ) : (
-                      <span className="text-xs text-green-600 font-medium">✓ Verstuurd naar n8n</span>
+                    <button
+                      type="button"
+                      className="btn-primary text-xs"
+                      disabled={sendingId === proposal.id || !n8nEnabled}
+                      onClick={() => handleSendToN8n(proposal.id)}
+                      title={!n8nEnabled ? "n8n webhook is nog niet ingesteld" : undefined}
+                    >
+                      {!n8nEnabled ? "n8n niet ingesteld" : sendingId === proposal.id ? "Bezig…" : proposal.status === "SENT_TO_N8N" ? "Opnieuw verzenden" : "PDF via n8n"}
+                    </button>
+                    {proposal.status === "SENT_TO_N8N" && (
+                      <span className="text-xs text-green-600 font-medium">✓ Al verzonden</span>
                     )}
                     <button
                       type="button"

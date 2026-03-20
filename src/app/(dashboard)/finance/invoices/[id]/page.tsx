@@ -63,11 +63,11 @@ export default async function InvoiceDetailPage({
               )}
             </div>
           </div>
-          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2">
             {(inv.status === "SENT" || inv.status === "OVERDUE") && (
               <MarkPaidButton invoiceId={inv.id} />
             )}
-            {inv.status === "DRAFT" && (
+            {(inv.status === "DRAFT" || inv.status === "SENT" || inv.status === "OVERDUE") && (
               <SendInvoiceButton invoiceId={inv.id} n8nEnabled={n8nEnabled} />
             )}
             <DeleteInvoiceButton

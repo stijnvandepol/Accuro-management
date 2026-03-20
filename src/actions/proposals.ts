@@ -96,7 +96,11 @@ export async function sendProposalToN8n(proposalId: string, actorUserId: string)
 
     await prisma.proposalDraft.update({
       where: { id: proposalId },
-      data: { status: ProposalDraftStatus.SENT_TO_N8N },
+      data: {
+        sentToN8nCount: { increment: 1 },
+        lastSentToN8nAt: new Date(),
+        status: ProposalDraftStatus.SENT_TO_N8N,
+      },
     });
 
     await createAuditLog({
@@ -104,7 +108,7 @@ export async function sendProposalToN8n(proposalId: string, actorUserId: string)
       entityType: "ProposalDraft",
       entityId: proposalId,
       action: "UPDATE",
-      metadata: { status: ProposalDraftStatus.SENT_TO_N8N },
+      metadata: { action: "SENT_TO_N8N", sentCount: proposal.sentToN8nCount + 1 },
     });
 
     return { success: true };
