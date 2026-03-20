@@ -306,6 +306,33 @@ export async function sendInvoiceToN8n(invoiceId: string, actorUserId: string) {
   }
 }
 
+export async function deleteInvoice(id: string, actorUserId: string) {
+  try {
+    const existing = await prisma.invoice.findUnique({ where: { id } });
+    if (!existing) {
+      return { success: false, error: "Factuur niet gevonden." };
+    }
+
+    await prisma.invoice.delete({ where: { id } });
+
+    await createAuditLog({
+      actorUserId,
+      entityType: "Invoice",
+      entityId: id,
+      action: "DELETE",
+      metadata: {
+        invoiceNumber: existing.invoiceNumber,
+        totalAmount: Number(existing.totalAmount),
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    logger.error("deleteInvoice error:", error);
+    return { success: false, error: "Factuur verwijderen mislukt." };
+  }
+}
+
 export async function getFinanceOverview() {
   try {
     const [revenueAgg, openAgg, overdueAgg, paidForVat] = await Promise.all([

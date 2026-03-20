@@ -6,6 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import { InvoiceStatusBadge } from "@/components/projects/status-badge";
 import { MarkPaidButton } from "../../mark-paid-button";
 import { SendInvoiceButton } from "./send-invoice-button";
+import { DeleteInvoiceButton } from "../../delete-invoice-button";
 import { getN8nInvoiceWebhookUrl } from "@/lib/env";
 
 export default async function InvoiceDetailPage({
@@ -69,6 +70,11 @@ export default async function InvoiceDetailPage({
             {inv.status === "DRAFT" && (
               <SendInvoiceButton invoiceId={inv.id} n8nEnabled={n8nEnabled} />
             )}
+            <DeleteInvoiceButton
+              invoiceId={inv.id}
+              invoiceNumber={inv.invoiceNumber}
+              redirectAfter="/finance"
+            />
           </div>
         </div>
 

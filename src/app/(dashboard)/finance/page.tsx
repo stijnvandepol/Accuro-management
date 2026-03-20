@@ -5,6 +5,7 @@ import { TrendingUp, Clock, AlertTriangle, Calendar, Plus } from "lucide-react";
 import { InvoiceStatus } from "@prisma/client";
 import { InvoiceStatusBadge } from "@/components/projects/status-badge";
 import { MarkPaidButton } from "./mark-paid-button";
+import { DeleteInvoiceButton } from "./delete-invoice-button";
 
 const STATUS_TABS = [
   { label: "Alle", value: "" },
@@ -155,7 +156,10 @@ export default async function FinancePage({
                       {formatCurrency(inv.totalAmount)}
                     </td>
                     <td className="px-5 py-3">
-                      <MarkPaidButton invoiceId={inv.id} />
+                      <div className="flex items-center gap-2">
+                        <MarkPaidButton invoiceId={inv.id} />
+                        <DeleteInvoiceButton invoiceId={inv.id} invoiceNumber={inv.invoiceNumber} />
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -245,12 +249,15 @@ export default async function FinancePage({
                       <InvoiceStatusBadge status={inv.status} />
                     </td>
                     <td className="px-5 py-3">
-                      <Link
-                        href={`/finance/invoices/${inv.id}`}
-                        className="text-xs text-gray-500 hover:text-blue-600"
-                      >
-                        Bekijken
-                      </Link>
+                      <div className="flex items-center gap-2">
+                        <Link
+                          href={`/finance/invoices/${inv.id}`}
+                          className="text-xs text-gray-500 hover:text-blue-600"
+                        >
+                          Bekijken
+                        </Link>
+                        <DeleteInvoiceButton invoiceId={inv.id} invoiceNumber={inv.invoiceNumber} />
+                      </div>
                     </td>
                   </tr>
                 ))}

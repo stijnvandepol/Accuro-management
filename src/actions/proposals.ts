@@ -114,6 +114,30 @@ export async function sendProposalToN8n(proposalId: string, actorUserId: string)
   }
 }
 
+export async function deleteProposalDraft(id: string, actorUserId: string) {
+  try {
+    const proposal = await prisma.proposalDraft.findUnique({ where: { id } });
+    if (!proposal) {
+      return { success: false, error: "Offerte niet gevonden." };
+    }
+
+    await prisma.proposalDraft.delete({ where: { id } });
+
+    await createAuditLog({
+      actorUserId,
+      entityType: "ProposalDraft",
+      entityId: id,
+      action: "DELETE",
+      metadata: { title: proposal.title, projectId: proposal.projectId },
+    });
+
+    return { success: true };
+  } catch (error) {
+    logger.error("Failed to delete proposal draft", error, { id });
+    return { success: false, error: "Offerte verwijderen mislukt." };
+  }
+}
+
 export async function createProposalDraft(data: {
   actorUserId: string;
   clientId: string;

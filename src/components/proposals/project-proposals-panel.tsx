@@ -4,8 +4,8 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
-import { FileText, Plus, X, Receipt } from "lucide-react";
-import { createProposalDraft, sendProposalToN8n } from "@/actions/proposals";
+import { FileText, Plus, X, Receipt, Trash2 } from "lucide-react";
+import { createProposalDraft, sendProposalToN8n, deleteProposalDraft } from "@/actions/proposals";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { InvoiceStatusBadge } from "@/components/projects/status-badge";
 import { InvoiceStatus } from "@prisma/client";
@@ -65,6 +65,7 @@ export function ProjectProposalsPanel({
   const [error, setError] = useState<string | null>(null);
   const [sendingId, setSendingId] = useState<string | null>(null);
   const [sendError, setSendError] = useState<string | null>(null);
+  const [deletingProposalId, setDeletingProposalId] = useState<string | null>(null);
 
   const initialForm = useMemo(
     () => ({
@@ -97,6 +98,15 @@ export function ProjectProposalsPanel({
   function resetForm() {
     setForm(initialForm);
     setError(null);
+  }
+
+  async function handleDeleteProposal(proposalId: string) {
+    if (!session?.user?.id) return;
+    if (!confirm("Dit offerteconcept verwijderen?")) return;
+    setDeletingProposalId(proposalId);
+    await deleteProposalDraft(proposalId, session.user.id);
+    setDeletingProposalId(null);
+    router.refresh();
   }
 
   async function handleSendToN8n(proposalId: string) {
@@ -306,6 +316,15 @@ export function ProjectProposalsPanel({
                     ) : (
                       <span className="text-xs text-green-600 font-medium">✓ Verstuurd naar n8n</span>
                     )}
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteProposal(proposal.id)}
+                      disabled={deletingProposalId === proposal.id}
+                      className="p-1 text-gray-400 transition-colors hover:text-red-600 disabled:opacity-50"
+                      title="Offerte verwijderen"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
               </div>
