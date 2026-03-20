@@ -56,7 +56,7 @@ export function ProjectGithubTab({
   const [error, setError] = useState<string | null>(null);
   const [promptText, setPromptText] = useState<Record<string, string>>({});
   const [submittingPrompt, setSubmittingPrompt] = useState<string | null>(null);
-  const [promptResults, setPromptResults] = useState<Record<string, { url: string; number: number }>>({});
+  const [promptResults, setPromptResults] = useState<Record<string, { url: string; number: number; copilotAssigned: boolean }>>({});
 
   async function handleRepoAdded() {
     setShowForm(false);
@@ -137,7 +137,7 @@ export function ProjectGithubTab({
     try {
       const result = await promptGithubAgent(projectId, repoId, text, session.user.id);
       if (result.success) {
-        setPromptResults((prev) => ({ ...prev, [repoId]: { url: result.issue.url, number: result.issue.number } }));
+        setPromptResults((prev) => ({ ...prev, [repoId]: { url: result.issue.url, number: result.issue.number, copilotAssigned: result.copilotAssigned } }));
         setPromptText((prev) => ({ ...prev, [repoId]: "" }));
       } else {
         setError(result.error ?? "Agent prompt versturen mislukt");
@@ -358,15 +358,25 @@ export function ProjectGithubTab({
                       Versturen
                     </button>
                     {promptResults[repo.id] && (
-                      <a
-                        href={promptResults[repo.id].url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1 text-xs text-blue-600 hover:underline"
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        Issue #{promptResults[repo.id].number} geopend
-                      </a>
+                      <span className="flex items-center gap-2 text-xs">
+                        <a
+                          href={promptResults[repo.id].url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="flex items-center gap-1 text-blue-600 hover:underline"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                          Issue #{promptResults[repo.id].number}
+                        </a>
+                        {promptResults[repo.id].copilotAssigned ? (
+                          <span className="flex items-center gap-1 text-green-600">
+                            <Check className="h-3 w-3" />
+                            Copilot assigned
+                          </span>
+                        ) : (
+                          <span className="text-gray-400">· assignen mislukt, doe dit handmatig in GitHub</span>
+                        )}
+                      </span>
                     )}
                   </div>
                 </div>

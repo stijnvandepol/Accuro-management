@@ -131,9 +131,18 @@ export async function promptGithubAgent(
       body: bodyParts.join("\n"),
     });
 
-    // Assign to Copilot via separate call using the actual login from GraphQL
+    let copilotAssigned = false;
     if (copilot.available && copilot.login) {
-      await addIssueAssignees(owner, repoName, issue.number, [copilot.login]);
+      try {
+        await addIssueAssignees(owner, repoName, issue.number, [copilot.login]);
+        copilotAssigned = true;
+      } catch (assignError) {
+        logger.warn("Could not assign Copilot agent — insufficient token permissions", {
+          issueUrl: issue.url,
+          login: copilot.login,
+          error: assignError instanceof GitHubApiError ? assignError.message : String(assignError),
+        });
+      }
     }
 
     const agentRun = await prisma.agentRun.create({
@@ -154,7 +163,7 @@ export async function promptGithubAgent(
       metadata: { projectId, repositoryId, issueUrl: issue.url, issueNumber: issue.number },
     });
 
-    return { success: true as const, issue, agentRunId: agentRun.id };
+    return { success: true as const, issue, agentRunId: agentRun.id, copilotAssigned };
   } catch (error) {
     if (error instanceof GitHubApiError) {
       return { success: false as const, error: error.message, rateLimited: error.rateLimited };
