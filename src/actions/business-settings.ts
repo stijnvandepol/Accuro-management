@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db";
 import { createAuditLog } from "@/lib/audit";
 import { BusinessSettingsSchema, type BusinessSettingsData } from "@/lib/validations/business-settings";
 import { logger } from "@/lib/logger";
+import { ZodError } from "zod";
 
 const SINGLETON_ID = "singleton";
 
@@ -43,6 +44,10 @@ export async function updateBusinessSettings(data: BusinessSettingsData, actorUs
 
     return { success: true as const, settings };
   } catch (error) {
+    if (error instanceof ZodError) {
+      const first = error.errors[0];
+      return { success: false as const, error: first?.message ?? "Validatie mislukt" };
+    }
     logger.error("updateBusinessSettings error:", error);
     return { success: false as const, error: "Instellingen opslaan mislukt" };
   }
