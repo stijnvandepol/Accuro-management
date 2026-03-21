@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getClient } from "@/actions/clients";
-import { getClientDocs } from "@/actions/docs";
-import { loadDocsPageContent } from "@/lib/content";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import {
   Building2,
@@ -16,7 +14,6 @@ import {
 } from "lucide-react";
 import { ProjectStatusBadge, InvoiceStatusBadge } from "@/components/projects/status-badge";
 import { ProposalPlaceholderButton } from "@/components/ui/proposal-placeholder-button";
-import { ClientDocsPanel } from "@/components/docs/client-docs-panel";
 import { DeleteClientButton } from "@/components/clients/delete-client-button";
 
 export default async function ClientDetailPage({
@@ -32,9 +29,6 @@ export default async function ClientDetailPage({
   }
 
   const client = result.client;
-  const docsPageContent = await loadDocsPageContent();
-  const docsResult = await getClientDocs(client.id);
-  const docs = docsResult.success ? docsResult.docs ?? [] : [];
 
   return (
     <div>
@@ -230,13 +224,6 @@ export default async function ClientDetailPage({
         </div>
       </div>
 
-      <div className="mt-6">
-        <ClientDocsPanel
-          clientId={client.id}
-          docs={docs}
-          content={docsPageContent.client}
-        />
-      </div>
     </div>
   );
 }

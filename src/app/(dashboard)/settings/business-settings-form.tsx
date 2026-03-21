@@ -33,9 +33,6 @@ export function BusinessSettingsForm({ initial }: Props) {
     quoteFooterText: initial?.quoteFooterText ?? "",
     invoiceFooterText: initial?.invoiceFooterText ?? "",
     defaultTermsText: initial?.defaultTermsText ?? "",
-    docsRepoName: initial?.docsRepoName ?? "",
-    docsRepoBranch: initial?.docsRepoBranch ?? "main",
-    docsBasePath: initial?.docsBasePath ?? "docs",
   });
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
@@ -70,9 +67,6 @@ export function BusinessSettingsForm({ initial }: Props) {
         quoteFooterText: form.quoteFooterText || undefined,
         invoiceFooterText: form.invoiceFooterText || undefined,
         defaultTermsText: form.defaultTermsText || undefined,
-        docsRepoName: form.docsRepoName || undefined,
-        docsRepoBranch: form.docsRepoBranch || undefined,
-        docsBasePath: form.docsBasePath || undefined,
       },
       session.user.id
     );
@@ -318,47 +312,6 @@ export function BusinessSettingsForm({ initial }: Props) {
                 placeholder="Tekst die standaard meegaat in offertes of facturen."
               />
             </div>
-
-            <div className="col-span-2 border-t border-gray-100 pt-4">
-              <h4 className="text-sm font-semibold text-gray-900">Docs opslag in GitHub</h4>
-              <p className="mt-1 text-sm text-gray-500">
-                Optioneel. Als je hier een repo invult, worden docs vanuit de app in GitHub opgeslagen in plaats van lokaal in de database.
-              </p>
-            </div>
-
-            <div>
-              <label className="form-label">Docs repo</label>
-              <input
-                name="docsRepoName"
-                className="form-input"
-                value={form.docsRepoName}
-                onChange={handleChange}
-                placeholder="owner/repo of https://github.com/owner/repo"
-              />
-            </div>
-
-            <div>
-              <label className="form-label">Docs branch</label>
-              <input
-                name="docsRepoBranch"
-                className="form-input"
-                value={form.docsRepoBranch}
-                onChange={handleChange}
-                placeholder="main"
-              />
-            </div>
-
-            <div className="col-span-2">
-              <label className="form-label">Docs base path</label>
-              <input
-                name="docsBasePath"
-                className="form-input"
-                value={form.docsBasePath}
-                onChange={handleChange}
-                placeholder="docs"
-              />
-            </div>
-
           </div>
         </section>
       </div>

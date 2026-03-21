@@ -38,8 +38,6 @@ export async function GET() {
       agentRuns,
       invoices,
       proposalDrafts,
-      docFolders,
-      docEntries,
       businessSettings,
       auditLogs,
     ] = await Promise.all([
@@ -81,12 +79,6 @@ export async function GET() {
       prisma.proposalDraft.findMany({
         orderBy: { createdAt: "asc" },
       }),
-      prisma.docFolder.findMany({
-        orderBy: { createdAt: "asc" },
-      }),
-      prisma.docEntry.findMany({
-        orderBy: { createdAt: "asc" },
-      }),
       prisma.businessSettings.findUnique({
         where: { id: BUSINESS_SETTINGS_ID },
       }),
@@ -115,8 +107,6 @@ export async function GET() {
           agentRuns: agentRuns.length,
           invoices: invoices.length,
           proposalDrafts: proposalDrafts.length,
-          docFolders: docFolders.length,
-          docEntries: docEntries.length,
           auditLogs: auditLogs.length,
         },
       },
@@ -131,8 +121,6 @@ export async function GET() {
         agentRuns,
         invoices,
         proposalDrafts,
-        docFolders,
-        docEntries,
         businessSettings,
         auditLogs,
       },

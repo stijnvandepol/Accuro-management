@@ -89,11 +89,6 @@ enum AgentRunStatus {
   FAILED
 }
 
-enum DocScope {
-  GENERAL
-  CLIENT
-}
-
 enum ProposalDraftStatus {
   DRAFT
   READY
@@ -136,7 +131,6 @@ model Client {
 
   projects       ProjectWorkspace[]
   invoices       Invoice[]
-  docFolders     DocFolder[]
   proposalDrafts ProposalDraft[]
 
   @@map("clients")
@@ -355,34 +349,6 @@ model ProposalDraft {
   @@map("proposal_drafts")
 }
 
-model DocFolder {
-  id        String    @id @default(cuid())
-  name      String
-  scope     DocScope
-  clientId  String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  client Client? @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  docs   DocEntry[]
-
-  @@unique([scope, clientId, name])
-  @@map("doc_folders")
-}
-
-model DocEntry {
-  id        String   @id @default(cuid())
-  folderId  String
-  title     String
-  content   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  folder DocFolder @relation(fields: [folderId], references: [id], onDelete: Cascade)
-
-  @@map("doc_entries")
-}
-
 model BusinessSettings {
   id                    String   @id @default("singleton")
   companyName           String   @default("")
@@ -402,9 +368,6 @@ model BusinessSettings {
   quoteFooterText       String?
   invoiceFooterText     String?
   defaultTermsText      String?
-  docsRepoName          String?
-  docsRepoBranch        String?
-  docsBasePath          String?
   updatedAt             DateTime @updatedAt
 
   @@map("business_settings")

@@ -10,7 +10,6 @@ src/
 │   ├── (auth)/         # Authentication routes (login, etc.)
 │   ├── (dashboard)/    # Protected dashboard routes
 │   │   ├── clients/    # Client management
-│   │   ├── docs/       # Document library
 │   │   ├── emails/     # Email management (deprecated - being phased out)
 │   │   ├── finance/    # Financial/invoicing
 │   │   ├── projects/   # Project workspace
@@ -27,7 +26,6 @@ src/
 │   ├── briefing/       # Agent briefing components
 │   ├── change-requests/# Change request UI
 │   ├── communication/  # Communication log UI
-│   ├── docs/           # Document browser UI
 │   ├── layout/         # Header, sidebar, nav
 │   ├── projects/       # Project UI components
 │   ├── proposals/      # Proposal generation UI
@@ -41,8 +39,6 @@ src/
 │   ├── api-auth.ts     # API authentication helpers
 │   ├── audit.ts        # Audit logging
 │   ├── auth.ts         # NextAuth.js configuration
-│   ├── briefing.ts     # Agent briefing logic
-│   ├── content.ts      # Content helpers
 │   ├── db.ts           # Prisma client initialization
 │   ├── env.ts          # Environment variable parsing
 │   ├── logger.ts       # Logging utility
@@ -58,7 +54,6 @@ src/
 └── worker/             # Background job processor (BullMQ)
     ├── index.ts        # Worker main entry point
     └── jobs/           # Job processors
-        ├── agent-briefing.ts   # AI briefing generation
         └── github-sync.ts      # GitHub repository sync
 ```
 
