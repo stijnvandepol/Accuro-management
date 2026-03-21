@@ -2,12 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/auth";
 import { logger } from "@/lib/logger";
 import {
-  buildYearlyFinancialReportCsv,
-  buildYearlyFinancialReportPdf,
   getYearlyFinancialReport,
   isValidReportYear,
   YearlyFinancialReportError,
 } from "@/lib/reports/yearly-financial-report";
+import {
+  buildYearlyFinancialReportCsv,
+  buildYearlyFinancialReportPdf,
+} from "@/lib/reports/yearly-financial-report-export";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";

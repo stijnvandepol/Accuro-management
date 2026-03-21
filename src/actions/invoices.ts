@@ -9,6 +9,10 @@ import { logger } from "@/lib/logger";
 import { getResolvedBusinessSettings } from "@/lib/settings";
 import { calculateInvoiceTotals } from "@/lib/invoice-utils";
 import {
+  buildBusinessProfilePayload,
+  buildInvoiceDefaultsPayload,
+} from "@/lib/n8n-payloads";
+import {
   clientInvoiceSelect,
   projectSummarySelect,
 } from "@/lib/prisma-selects";
@@ -261,22 +265,8 @@ export async function sendInvoiceToN8n(invoiceId: string, actorUserId: string) {
           address: invoice.client.address,
         },
         project: invoice.project ?? null,
-        from: {
-          companyName: settings.companyName,
-          email: settings.email,
-          address: settings.address,
-          kvkNumber: settings.kvkNumber,
-          vatNumber: settings.vatNumber,
-          iban: settings.iban,
-          bankName: settings.bankName,
-          phone: settings.phone,
-          websiteUrl: settings.websiteUrl,
-        },
-        defaults: {
-          invoiceFooterText: settings.invoiceFooterText,
-          termsText: settings.defaultTermsText,
-          paymentTermDays: settings.paymentTermDays,
-        },
+        from: buildBusinessProfilePayload(settings),
+        defaults: buildInvoiceDefaultsPayload(settings),
       }),
     });
 

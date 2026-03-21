@@ -1,6 +1,7 @@
 import { Download, FileJson, FileSpreadsheet, FileText } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import type { YearlyFinancialReport } from "@/lib/reports/yearly-financial-report";
+import { SendYearlyReportButton } from "@/components/finance/send-yearly-report-button";
 
 interface Props {
   report: YearlyFinancialReport;
@@ -8,6 +9,7 @@ interface Props {
   selectedYear: number;
   includeUnpaid: boolean;
   activeStatus?: string;
+  n8nEnabled: boolean;
 }
 
 export function YearlyReportCard({
@@ -16,6 +18,7 @@ export function YearlyReportCard({
   selectedYear,
   includeUnpaid,
   activeStatus,
+  n8nEnabled,
 }: Props) {
   const reportQuery = new URLSearchParams({
     year: String(selectedYear),
@@ -36,6 +39,11 @@ export function YearlyReportCard({
             </p>
           </div>
           <div className="flex items-center gap-2">
+            <SendYearlyReportButton
+              year={selectedYear}
+              includeUnpaid={includeUnpaid}
+              n8nEnabled={n8nEnabled}
+            />
             <a
               href={`/reports/yearly?${reportQuery.toString()}&format=csv`}
               className="btn-secondary"

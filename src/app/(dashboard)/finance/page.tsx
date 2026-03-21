@@ -7,6 +7,7 @@ import { InvoiceStatus } from "@prisma/client";
 import { InvoiceStatusBadge } from "@/components/projects/status-badge";
 import { MarkPaidButton } from "./mark-paid-button";
 import { DeleteInvoiceButton } from "./delete-invoice-button";
+import { getN8nYearlyReportWebhookUrl } from "@/lib/env";
 import {
   getAvailableYearlyReportYears,
   getYearlyFinancialReport,
@@ -30,6 +31,7 @@ export default async function FinancePage({
   const activeStatus = status as InvoiceStatus | undefined;
   const selectedReportYear = normalizeReportYear(reportYear);
   const reportIncludesUnpaid = includeUnpaid === "true";
+  const yearlyReportN8nEnabled = Boolean(getN8nYearlyReportWebhookUrl());
 
   const [overviewResult, invoicesResult, overdueResult, yearlyReport, availableReportYears] = await Promise.all([
     getFinanceOverview(),
@@ -130,6 +132,7 @@ export default async function FinancePage({
         selectedYear={selectedReportYear}
         includeUnpaid={reportIncludesUnpaid}
         activeStatus={activeStatus}
+        n8nEnabled={yearlyReportN8nEnabled}
       />
 
       {/* Overdue invoices (if any) */}

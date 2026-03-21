@@ -5,6 +5,10 @@ import { createAuditLog } from "@/lib/audit";
 import { getN8nWebhookUrl } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import { getResolvedBusinessSettings } from "@/lib/settings";
+import {
+  buildBusinessProfilePayload,
+  buildProposalDefaultsPayload,
+} from "@/lib/n8n-payloads";
 import { ProposalDraftStatus } from "@prisma/client";
 import {
   clientContactSelect,
@@ -75,22 +79,8 @@ export async function sendProposalToN8n(proposalId: string, actorUserId: string)
         client: proposal.client,
         project: proposal.project,
         createdAt: proposal.createdAt,
-        from: {
-          companyName: settings.companyName,
-          email: settings.email,
-          address: settings.address,
-          kvkNumber: settings.kvkNumber,
-          vatNumber: settings.vatNumber,
-          iban: settings.iban,
-          bankName: settings.bankName,
-          phone: settings.phone,
-          websiteUrl: settings.websiteUrl,
-        },
-        defaults: {
-          quoteValidDays: settings.defaultQuoteValidDays,
-          quoteFooterText: settings.quoteFooterText,
-          termsText: settings.defaultTermsText,
-        },
+        from: buildBusinessProfilePayload(settings),
+        defaults: buildProposalDefaultsPayload(settings),
       }),
     });
 
