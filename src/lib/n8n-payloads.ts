@@ -51,3 +51,10 @@ export function buildYearlyReportDefaultsPayload(settings: BusinessPayloadSettin
     termsText: settings.defaultTermsText ?? null,
   };
 }
+
+export function buildMonthlyReportDefaultsPayload(settings: BusinessPayloadSettings) {
+  return {
+    footerText: settings.invoiceFooterText ?? null,
+    termsText: settings.defaultTermsText ?? null,
+  };
+}

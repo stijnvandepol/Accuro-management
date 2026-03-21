@@ -1,10 +1,10 @@
 import { Download, FileJson, FileSpreadsheet, FileText } from "lucide-react";
-import { formatCurrency } from "@/lib/utils";
-import type { YearlyFinancialReport } from "@/lib/reports/yearly-financial-report";
-import { SendYearlyReportButton } from "@/components/finance/send-yearly-report-button";
+import { SendMonthlyReportButton } from "@/components/finance/send-monthly-report-button";
+import type { MonthlyFinancialReport } from "@/lib/reports/monthly-financial-report";
+import { formatCurrency, formatDate } from "@/lib/utils";
 
 interface Props {
-  report: YearlyFinancialReport;
+  report: MonthlyFinancialReport;
   availableYears: number[];
   selectedYear: number;
   selectedMonth: number;
@@ -12,7 +12,22 @@ interface Props {
   n8nEnabled: boolean;
 }
 
-export function YearlyReportCard({
+const MONTH_OPTIONS = [
+  { value: 1, label: "Januari" },
+  { value: 2, label: "Februari" },
+  { value: 3, label: "Maart" },
+  { value: 4, label: "April" },
+  { value: 5, label: "Mei" },
+  { value: 6, label: "Juni" },
+  { value: 7, label: "Juli" },
+  { value: 8, label: "Augustus" },
+  { value: 9, label: "September" },
+  { value: 10, label: "Oktober" },
+  { value: 11, label: "November" },
+  { value: 12, label: "December" },
+];
+
+export function MonthlyReportCard({
   report,
   availableYears,
   selectedYear,
@@ -22,6 +37,7 @@ export function YearlyReportCard({
 }: Props) {
   const reportQuery = new URLSearchParams({
     year: String(selectedYear),
+    month: String(selectedMonth),
   });
 
   return (
@@ -29,25 +45,26 @@ export function YearlyReportCard({
       <div className="border-b border-gray-100 px-5 py-4">
         <div className="flex items-center justify-between gap-4">
           <div>
-            <h2 className="font-semibold text-gray-900">Jaaropgave</h2>
+            <h2 className="font-semibold text-gray-900">Maandoverzicht</h2>
             <p className="mt-0.5 text-sm text-gray-500">
-              Jaaroverzicht van ontvangen betalingen op basis van betaalde facturen en betaaldatum.
+              Overzicht van ontvangen betalingen op basis van betaalde facturen en betaaldatum.
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <SendYearlyReportButton
+            <SendMonthlyReportButton
               year={selectedYear}
+              month={selectedMonth}
               n8nEnabled={n8nEnabled}
             />
             <a
-              href={`/reports/yearly?${reportQuery.toString()}&format=csv`}
+              href={`/reports/monthly?${reportQuery.toString()}&format=csv`}
               className="btn-secondary"
             >
               <FileSpreadsheet className="h-4 w-4" />
               Download CSV
             </a>
             <a
-              href={`/reports/yearly?${reportQuery.toString()}&format=pdf`}
+              href={`/reports/monthly?${reportQuery.toString()}&format=pdf`}
               className="btn-secondary"
             >
               <Download className="h-4 w-4" />
@@ -60,13 +77,12 @@ export function YearlyReportCard({
       <div className="border-b border-gray-100 px-5 py-4">
         <form method="GET" className="flex flex-wrap items-end gap-4">
           {activeStatus ? <input type="hidden" name="status" value={activeStatus} /> : null}
-          <input type="hidden" name="reportMonth" value={String(selectedMonth)} />
           <div>
-            <label htmlFor="report-year" className="form-label">
+            <label htmlFor="report-month-year" className="form-label">
               Jaar
             </label>
             <select
-              id="report-year"
+              id="report-month-year"
               name="reportYear"
               defaultValue={String(selectedYear)}
               className="form-select min-w-36"
@@ -79,13 +95,31 @@ export function YearlyReportCard({
             </select>
           </div>
 
+          <div>
+            <label htmlFor="report-month" className="form-label">
+              Maand
+            </label>
+            <select
+              id="report-month"
+              name="reportMonth"
+              defaultValue={String(selectedMonth)}
+              className="form-select min-w-40"
+            >
+              {MONTH_OPTIONS.map((month) => (
+                <option key={month.value} value={month.value}>
+                  {month.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <button type="submit" className="btn-primary">
             <FileText className="h-4 w-4" />
             Genereer
           </button>
 
           <a
-            href={`/reports/yearly?${reportQuery.toString()}`}
+            href={`/reports/monthly?${reportQuery.toString()}`}
             className="text-sm text-blue-600 hover:underline"
           >
             <span className="inline-flex items-center gap-1">
@@ -97,81 +131,16 @@ export function YearlyReportCard({
       </div>
 
       <div className="grid grid-cols-4 gap-4 p-5">
-        <Metric
-          label="Omzet ex BTW"
-          value={formatCurrency(report.total_ex_vat)}
-        />
-        <Metric
-          label="BTW"
-          value={formatCurrency(report.total_vat)}
-        />
-        <Metric
-          label="Omzet incl BTW"
-          value={formatCurrency(report.total_inc_vat)}
-        />
-        <Metric
-          label="Aantal facturen"
-          value={String(report.invoice_count)}
-        />
-      </div>
-
-      <div className="border-t border-gray-100 px-5 py-4">
-        <div className="mb-3 flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-gray-900">
-            Maandelijkse uitsplitsing
-          </h3>
-          <p className="text-xs text-gray-400">
-            Filter: alleen betaald op {report.date_basis === "paidAt" ? "betaaldatum" : "factuurdatum"}
-          </p>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-100 bg-gray-50 text-left">
-                <th className="px-4 py-3 font-medium text-gray-600">Maand</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Aantal</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Ex BTW</th>
-                <th className="px-4 py-3 font-medium text-gray-600">BTW</th>
-                <th className="px-4 py-3 font-medium text-gray-600">Incl BTW</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {report.monthly_breakdown.map((month) => (
-                <tr key={month.month} className="hover:bg-gray-50">
-                  <td className="px-4 py-3 font-medium uppercase text-gray-900">
-                    {month.label}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">{month.invoice_count}</td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {formatCurrency(month.total_ex_vat)}
-                  </td>
-                  <td className="px-4 py-3 text-gray-600">
-                    {formatCurrency(month.total_vat)}
-                  </td>
-                  <td className="px-4 py-3 font-medium text-gray-900">
-                    {formatCurrency(month.total_inc_vat)}
-                  </td>
-                </tr>
-              ))}
-              <tr className="bg-gray-50 font-semibold text-gray-900">
-                <td className="px-4 py-3">Totaal</td>
-                <td className="px-4 py-3">{report.invoice_count}</td>
-                <td className="px-4 py-3">{formatCurrency(report.total_ex_vat)}</td>
-                <td className="px-4 py-3">{formatCurrency(report.total_vat)}</td>
-                <td className="px-4 py-3">{formatCurrency(report.total_inc_vat)}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+        <Metric label="Ontvangen ex BTW" value={formatCurrency(report.total_ex_vat)} />
+        <Metric label="BTW" value={formatCurrency(report.total_vat)} />
+        <Metric label="Ontvangen incl BTW" value={formatCurrency(report.total_inc_vat)} />
+        <Metric label="Aantal facturen" value={String(report.invoice_count)} />
       </div>
 
       <div className="border-t border-gray-100 px-5 py-4">
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-900">BTW-uitsplitsing</h3>
-          <p className="text-xs text-gray-400">
-            Handig voor boekhouding en aangifte.
-          </p>
+          <p className="text-xs text-gray-400">Filter: alleen betaald op betaaldatum</p>
         </div>
 
         <div className="overflow-x-auto">
@@ -198,7 +167,7 @@ export function YearlyReportCard({
               {report.vat_breakdown.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-6 text-center text-gray-400">
-                    Geen betaalde facturen in dit jaar.
+                    Geen betaalde facturen in deze periode.
                   </td>
                 </tr>
               ) : null}
@@ -211,7 +180,7 @@ export function YearlyReportCard({
         <div className="mb-3 flex items-center justify-between">
           <h3 className="text-sm font-semibold text-gray-900">Factuurdetails</h3>
           <p className="text-xs text-gray-400">
-            Detailregels van alle ontvangen betalingen in dit jaar.
+            Voor boekhouding en belastingaangifte op basis van ontvangen betalingen.
           </p>
         </div>
 
@@ -234,7 +203,7 @@ export function YearlyReportCard({
                   <td className="px-4 py-3 font-medium text-gray-900">{invoice.invoice_number}</td>
                   <td className="px-4 py-3 text-gray-600">{invoice.client_name}</td>
                   <td className="px-4 py-3 text-gray-600">{invoice.project_name ?? "—"}</td>
-                  <td className="px-4 py-3 text-gray-600">{new Date(invoice.report_date).toLocaleDateString("nl-NL")}</td>
+                  <td className="px-4 py-3 text-gray-600">{formatDate(invoice.paid_at ?? invoice.report_date)}</td>
                   <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.subtotal)}</td>
                   <td className="px-4 py-3 text-gray-600">{formatCurrency(invoice.vat_amount)}</td>
                   <td className="px-4 py-3 font-medium text-gray-900">{formatCurrency(invoice.total_amount)}</td>
@@ -243,7 +212,7 @@ export function YearlyReportCard({
               {report.invoices.length === 0 ? (
                 <tr>
                   <td colSpan={7} className="px-4 py-6 text-center text-gray-400">
-                    Geen betaalde facturen in dit jaar.
+                    Geen betaalde facturen in deze periode.
                   </td>
                 </tr>
               ) : null}

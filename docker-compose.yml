@@ -41,6 +41,9 @@ services:
       NEXTAUTH_URL: "${NEXTAUTH_URL}"
       INTERNAL_API_KEY: "${INTERNAL_API_KEY}"
       N8N_WEBHOOK_PROPOSAL_URL: "${N8N_WEBHOOK_PROPOSAL_URL}"
+      N8N_WEBHOOK_INVOICE_URL: "${N8N_WEBHOOK_INVOICE_URL}"
+      N8N_WEBHOOK_YEARLY_REPORT_URL: "${N8N_WEBHOOK_YEARLY_REPORT_URL}"
+      N8N_WEBHOOK_MONTHLY_REPORT_URL: "${N8N_WEBHOOK_MONTHLY_REPORT_URL}"
       GITHUB_TOKEN: "${GITHUB_TOKEN}"
       NODE_ENV: "production"
     depends_on:
@@ -126,7 +129,7 @@ services:
       --appendonly yes
       --appendfsync everysec
       --maxmemory 256mb
-      --maxmemory-policy allkeys-lru
+      --maxmemory-policy noeviction
     volumes:
       - redis_data:/data
     networks:

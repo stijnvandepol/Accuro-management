@@ -3,17 +3,15 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { FileText } from "lucide-react";
-import { sendYearlyFinancialReportToN8n } from "@/actions/yearly-reports";
+import { sendMonthlyFinancialReportToN8n } from "@/actions/monthly-reports";
 
 interface Props {
   year: number;
+  month: number;
   n8nEnabled: boolean;
 }
 
-export function SendYearlyReportButton({
-  year,
-  n8nEnabled,
-}: Props) {
+export function SendMonthlyReportButton({ year, month, n8nEnabled }: Props) {
   const { data: session } = useSession();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -26,8 +24,8 @@ export function SendYearlyReportButton({
     setError(null);
     setDriveUrl(null);
 
-    const result = await sendYearlyFinancialReportToN8n(
-      { year },
+    const result = await sendMonthlyFinancialReportToN8n(
+      { year, month },
       session.user.id,
     );
 
@@ -58,7 +56,7 @@ export function SendYearlyReportButton({
         type="button"
         className="btn-secondary"
         disabled={loading || !n8nEnabled}
-        title={!n8nEnabled ? "N8N_WEBHOOK_YEARLY_REPORT_URL is niet ingesteld" : undefined}
+        title={!n8nEnabled ? "N8N_WEBHOOK_MONTHLY_REPORT_URL is niet ingesteld" : undefined}
         onClick={handleSend}
       >
         <FileText className="h-4 w-4" />

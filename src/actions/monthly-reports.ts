@@ -1,47 +1,47 @@
 "use server";
 
 import { createAuditLog } from "@/lib/audit";
-import { getN8nYearlyReportWebhookUrl } from "@/lib/env";
+import { getN8nMonthlyReportWebhookUrl } from "@/lib/env";
 import { logger } from "@/lib/logger";
 import {
   buildBusinessProfilePayload,
-  buildYearlyReportDefaultsPayload,
+  buildMonthlyReportDefaultsPayload,
 } from "@/lib/n8n-payloads";
 import {
-  getYearlyFinancialReport,
-  type YearlyFinancialReport,
-  type YearlyFinancialReportOptions,
-  YearlyFinancialReportError,
-} from "@/lib/reports/yearly-financial-report";
+  getMonthlyFinancialReport,
+  type MonthlyFinancialReport,
+  type MonthlyFinancialReportOptions,
+  MonthlyFinancialReportError,
+} from "@/lib/reports/monthly-financial-report";
 import { getResolvedBusinessSettings } from "@/lib/settings";
 
-type N8nYearlyReportResponse = {
+type N8nMonthlyReportResponse = {
   ok?: boolean;
   driveUrl?: string;
 };
 
-export async function sendYearlyFinancialReportToN8n(
-  options: YearlyFinancialReportOptions,
+export async function sendMonthlyFinancialReportToN8n(
+  options: MonthlyFinancialReportOptions,
   actorUserId: string,
 ) {
-  const webhookUrl = getN8nYearlyReportWebhookUrl();
+  const webhookUrl = getN8nMonthlyReportWebhookUrl();
   if (!webhookUrl) {
     return {
       success: false as const,
-      error: "N8N_WEBHOOK_YEARLY_REPORT_URL is niet ingesteld.",
+      error: "N8N_WEBHOOK_MONTHLY_REPORT_URL is niet ingesteld.",
     };
   }
 
   try {
     const [report, settings] = await Promise.all([
-      getYearlyFinancialReport(options),
+      getMonthlyFinancialReport(options),
       getResolvedBusinessSettings(),
     ]);
 
     const res = await fetch(webhookUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(buildYearlyReportPayload(report, settings)),
+      body: JSON.stringify(buildMonthlyReportPayload(report, settings)),
     });
 
     if (!res.ok) {
@@ -52,12 +52,12 @@ export async function sendYearlyFinancialReportToN8n(
 
     await createAuditLog({
       actorUserId,
-      entityType: "YearlyFinancialReport",
-      entityId: `${report.year}-${report.paid_only ? "paid-only" : "all-invoices"}`,
+      entityType: "MonthlyFinancialReport",
+      entityId: `${report.year}-${String(report.month).padStart(2, "0")}`,
       action: "GENERATE",
       metadata: {
         year: report.year,
-        includeUnpaid: Boolean(options.includeUnpaid),
+        month: report.month,
         sentViaN8n: true,
         driveUrl: response?.driveUrl ?? null,
       },
@@ -68,13 +68,13 @@ export async function sendYearlyFinancialReportToN8n(
       driveUrl: response?.driveUrl ?? null,
     };
   } catch (error) {
-    if (error instanceof YearlyFinancialReportError) {
+    if (error instanceof MonthlyFinancialReportError) {
       return { success: false as const, error: error.message };
     }
 
-    logger.error("sendYearlyFinancialReportToN8n error:", error, {
+    logger.error("sendMonthlyFinancialReportToN8n error:", error, {
       year: options.year,
-      includeUnpaid: Boolean(options.includeUnpaid),
+      month: options.month,
     });
 
     return {
@@ -84,41 +84,47 @@ export async function sendYearlyFinancialReportToN8n(
   }
 }
 
-function buildYearlyReportPayload(
-  report: YearlyFinancialReport,
+function buildMonthlyReportPayload(
+  report: MonthlyFinancialReport,
   settings: Awaited<ReturnType<typeof getResolvedBusinessSettings>>,
 ) {
+  const month = String(report.month).padStart(2, "0");
+
   return {
-    reportType: "YEARLY_FINANCIAL_REPORT",
+    reportType: "MONTHLY_FINANCIAL_REPORT",
     year: report.year,
-    paidOnly: report.paid_only,
+    month: report.month,
+    monthLabel: report.month_label,
+    monthLabelLong: report.month_label_long,
+    paidOnly: true,
     dateBasis: report.date_basis,
-    includeUnpaid: !report.paid_only,
     generatedAt: report.generated_at,
     period: {
-      startDate: `${report.year}-01-01`,
-      endDate: `${report.year}-12-31`,
+      startDate: `${report.year}-${month}-01`,
+      endDateExclusive:
+        report.month === 12
+          ? `${report.year + 1}-01-01`
+          : `${report.year}-${String(report.month + 1).padStart(2, "0")}-01`,
     },
     invoiceCount: report.invoice_count,
     totalExVat: report.total_ex_vat,
     totalVat: report.total_vat,
     totalIncVat: report.total_inc_vat,
-    monthlyBreakdown: report.monthly_breakdown,
     vatBreakdown: report.vat_breakdown,
     invoices: report.invoices,
     from: buildBusinessProfilePayload(settings),
-    defaults: buildYearlyReportDefaultsPayload(settings),
+    defaults: buildMonthlyReportDefaultsPayload(settings),
   };
 }
 
-async function parseN8nResponse(res: Response): Promise<N8nYearlyReportResponse | null> {
+async function parseN8nResponse(res: Response): Promise<N8nMonthlyReportResponse | null> {
   const contentType = res.headers.get("content-type") ?? "";
   if (!contentType.includes("application/json")) {
     return null;
   }
 
   try {
-    return (await res.json()) as N8nYearlyReportResponse;
+    return (await res.json()) as N8nMonthlyReportResponse;
   } catch {
     return null;
   }

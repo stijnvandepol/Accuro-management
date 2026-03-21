@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getInvoices, getFinanceOverview } from "@/actions/invoices";
+import { MonthlyReportCard } from "@/components/finance/monthly-report-card";
 import { YearlyReportCard } from "@/components/finance/yearly-report-card";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { TrendingUp, Clock, AlertTriangle, Calendar, Plus } from "lucide-react";
@@ -7,7 +8,12 @@ import { InvoiceStatus } from "@prisma/client";
 import { InvoiceStatusBadge } from "@/components/projects/status-badge";
 import { MarkPaidButton } from "./mark-paid-button";
 import { DeleteInvoiceButton } from "./delete-invoice-button";
-import { getN8nYearlyReportWebhookUrl } from "@/lib/env";
+import { getN8nMonthlyReportWebhookUrl, getN8nYearlyReportWebhookUrl } from "@/lib/env";
+import {
+  getAvailableMonthlyReportYears,
+  getMonthlyFinancialReport,
+  normalizeReportMonth,
+} from "@/lib/reports/monthly-financial-report";
 import {
   getAvailableYearlyReportYears,
   getYearlyFinancialReport,
@@ -25,23 +31,36 @@ const STATUS_TABS = [
 export default async function FinancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; reportYear?: string; includeUnpaid?: string }>;
+  searchParams: Promise<{ status?: string; reportYear?: string; reportMonth?: string }>;
 }) {
-  const { status, reportYear, includeUnpaid } = await searchParams;
+  const { status, reportYear, reportMonth } = await searchParams;
   const activeStatus = status as InvoiceStatus | undefined;
   const selectedReportYear = normalizeReportYear(reportYear);
-  const reportIncludesUnpaid = includeUnpaid === "true";
+  const selectedReportMonth = normalizeReportMonth(reportMonth);
   const yearlyReportN8nEnabled = Boolean(getN8nYearlyReportWebhookUrl());
+  const monthlyReportN8nEnabled = Boolean(getN8nMonthlyReportWebhookUrl());
 
-  const [overviewResult, invoicesResult, overdueResult, yearlyReport, availableReportYears] = await Promise.all([
+  const [
+    overviewResult,
+    invoicesResult,
+    overdueResult,
+    yearlyReport,
+    monthlyReport,
+    availableReportYears,
+  ] = await Promise.all([
     getFinanceOverview(),
     getInvoices(activeStatus ? { status: activeStatus } : undefined),
     getInvoices({ status: InvoiceStatus.OVERDUE }),
     getYearlyFinancialReport({
       year: selectedReportYear,
-      includeUnpaid: reportIncludesUnpaid,
     }),
-    getAvailableYearlyReportYears(),
+    getMonthlyFinancialReport({
+      year: selectedReportYear,
+      month: selectedReportMonth,
+    }),
+    Promise.all([getAvailableYearlyReportYears(), getAvailableMonthlyReportYears()]).then(
+      ([yearlyYears, monthlyYears]) => Array.from(new Set([...yearlyYears, ...monthlyYears])),
+    ),
   ]);
 
   const overview = overviewResult.success && "overview" in overviewResult ? overviewResult.overview : null;
@@ -130,9 +149,18 @@ export default async function FinancePage({
         report={yearlyReport}
         availableYears={availableReportYears}
         selectedYear={selectedReportYear}
-        includeUnpaid={reportIncludesUnpaid}
+        selectedMonth={selectedReportMonth}
         activeStatus={activeStatus}
         n8nEnabled={yearlyReportN8nEnabled}
+      />
+
+      <MonthlyReportCard
+        report={monthlyReport}
+        availableYears={availableReportYears}
+        selectedYear={selectedReportYear}
+        selectedMonth={selectedReportMonth}
+        activeStatus={activeStatus}
+        n8nEnabled={monthlyReportN8nEnabled}
       />
 
       {/* Overdue invoices (if any) */}
@@ -207,7 +235,7 @@ export default async function FinancePage({
               href={buildFinanceHref({
                 status: tab.value || undefined,
                 reportYear: selectedReportYear,
-                includeUnpaid: reportIncludesUnpaid,
+                reportMonth: selectedReportMonth,
               })}
               className={`px-3 py-1.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
                 (tab.value === "" && !activeStatus) ||
@@ -308,11 +336,11 @@ export default async function FinancePage({
 function buildFinanceHref({
   status,
   reportYear,
-  includeUnpaid,
+  reportMonth,
 }: {
   status?: string;
   reportYear: number;
-  includeUnpaid: boolean;
+  reportMonth: number;
 }) {
   const query = new URLSearchParams();
 
@@ -321,10 +349,7 @@ function buildFinanceHref({
   }
 
   query.set("reportYear", String(reportYear));
-
-  if (includeUnpaid) {
-    query.set("includeUnpaid", "true");
-  }
+  query.set("reportMonth", String(reportMonth));
 
   const search = query.toString();
   return search ? `/finance?${search}` : "/finance";

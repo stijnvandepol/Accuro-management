@@ -1,4 +1,4 @@
-import type { YearlyFinancialReport } from "@/lib/reports/yearly-financial-report";
+import type { MonthlyFinancialReport } from "@/lib/reports/monthly-financial-report";
 import {
   buildInvoiceLines,
   buildSimplePdf,
@@ -11,21 +11,13 @@ import {
   getCompanyLine,
 } from "@/lib/reports/financial-report-export-shared";
 
-export function buildYearlyFinancialReportCsv(report: YearlyFinancialReport) {
+export function buildMonthlyFinancialReportCsv(report: MonthlyFinancialReport) {
   const lines = [
     ["Jaar", String(report.year)],
-    ["Alleen betaald", report.paid_only ? "Ja" : "Nee"],
-    ["Periodebasis", report.date_basis === "paidAt" ? "Betaaldatum" : "Factuurdatum"],
+    ["Maand", report.month_label_long],
+    ["Alleen betaald", "Ja"],
+    ["Periodebasis", "Betaaldatum"],
     ["Gegenereerd op", report.generated_at],
-    [],
-    ["Maand", "Aantal facturen", "Omzet ex BTW", "BTW", "Omzet incl BTW"],
-    ...report.monthly_breakdown.map((month) => [
-      month.label,
-      String(month.invoice_count),
-      formatCsvNumber(month.total_ex_vat),
-      formatCsvNumber(month.total_vat),
-      formatCsvNumber(month.total_inc_vat),
-    ]),
     [],
     ["BTW-tarief", "Aantal facturen", "Omzet ex BTW", "BTW", "Omzet incl BTW"],
     ...report.vat_breakdown.map((entry) => [
@@ -73,25 +65,19 @@ export function buildYearlyFinancialReportCsv(report: YearlyFinancialReport) {
   return `${lines.map((line) => line.map(escapeCsvValue).join(";")).join("\n")}\n`;
 }
 
-export async function buildYearlyFinancialReportPdf(report: YearlyFinancialReport) {
+export async function buildMonthlyFinancialReportPdf(report: MonthlyFinancialReport) {
   const companyLine = await getCompanyLine();
   const lines = [
-    `Jaaropgave ${report.year}`,
+    `Maandoverzicht ${report.month_label_long} ${report.year}`,
     companyLine,
     `Gegenereerd op: ${formatPdfDate(report.generated_at)}`,
-    `Filter: ${report.paid_only ? "alleen betaalde facturen" : "alle facturen"}`,
-    `Periodebasis: ${report.date_basis === "paidAt" ? "betaaldatum" : "factuurdatum"}`,
+    "Filter: alleen betaalde facturen",
+    "Periodebasis: betaaldatum",
     "",
     `Aantal facturen: ${report.invoice_count}`,
     `Omzet ex BTW: ${formatPdfMoney(report.total_ex_vat)}`,
     `BTW: ${formatPdfMoney(report.total_vat)}`,
     `Omzet incl BTW: ${formatPdfMoney(report.total_inc_vat)}`,
-    "",
-    "Maandelijkse uitsplitsing",
-    ...report.monthly_breakdown.map(
-      (month) =>
-        `${month.label.toUpperCase()}  |  ${month.invoice_count} facturen  |  ex BTW ${formatPdfMoney(month.total_ex_vat)}  |  BTW ${formatPdfMoney(month.total_vat)}  |  incl ${formatPdfMoney(month.total_inc_vat)}`,
-    ),
     "",
     ...buildVatBreakdownLines(report.vat_breakdown),
     "",
