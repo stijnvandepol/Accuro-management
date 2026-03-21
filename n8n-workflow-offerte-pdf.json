@@ -33,69 +33,6 @@
     },
     {
       "parameters": {
-        "jsCode": "const html = $input.first().json.html;\nconst buffer = Buffer.from(html, 'utf8');\nconst binaryData = {\n  data: buffer.toString('base64'),\n  mimeType: 'application/octet-stream',\n  fileName: 'offerte.html'\n};\nconst item = $input.first();\nitem.binary = { data: binaryData };\nreturn [item];"
-      },
-      "id": "8c4b322d-c053-41aa-9364-1fe86af58d37",
-      "name": "HTML → Binary",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        2592,
-        0
-      ]
-    },
-    {
-      "parameters": {
-        "method": "POST",
-        "url": "https://v2.convertapi.com/convert/html/to/pdf",
-        "authentication": "genericCredentialType",
-        "genericAuthType": "httpBearerAuth",
-        "sendHeaders": true,
-        "headerParameters": {
-          "parameters": [
-            {
-              "name": "Accept",
-              "value": "application/octet-stream"
-            }
-          ]
-        },
-        "sendBody": true,
-        "contentType": "multipart-form-data",
-        "bodyParameters": {
-          "parameters": [
-            {
-              "parameterType": "formBinaryData",
-              "name": "file",
-              "inputDataFieldName": "data"
-            }
-          ]
-        },
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "file",
-              "outputPropertyName": "data"
-            }
-          }
-        }
-      },
-      "id": "0cc94583-6a12-4b5c-897b-66a0ee389dbd",
-      "name": "HTML → PDF (ConvertAPI)",
-      "type": "n8n-nodes-base.httpRequest",
-      "typeVersion": 4.2,
-      "position": [
-        2832,
-        0
-      ],
-      "credentials": {
-        "httpBearerAuth": {
-          "id": "sdqCbWt1JuZ3OBf1",
-          "name": "Bearer Auth account"
-        }
-      }
-    },
-    {
-      "parameters": {
         "name": "=Offerte - {{ $('Bouw HTML offerte').item.json.recipientCompany ?? $('Bouw HTML offerte').item.json.recipientName }} - {{ $now.format('yyyy-MM-dd') }}.pdf",
         "driveId": {
           "__rl": true,
@@ -182,6 +119,39 @@
         3552,
         0
       ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://172.16.2.14:3001/generate",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"source\": {{ JSON.stringify($('Bouw HTML offerte').item.json.html) }},\n  \"format\": \"A4\",\n  \"margin\": \"12mm 12mm 12mm 12mm\",\n  \"timeout\": 30\n}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "html2pdf-offerte",
+      "name": "HTML → PDF (html2pdf)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2592,
+        0
+      ]
     }
   ],
   "connections": {
@@ -200,29 +170,7 @@
       "main": [
         [
           {
-            "node": "HTML → Binary",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "HTML → Binary": {
-      "main": [
-        [
-          {
-            "node": "HTML → PDF (ConvertAPI)",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "HTML → PDF (ConvertAPI)": {
-      "main": [
-        [
-          {
-            "node": "Upload naar Google Drive",
+            "node": "HTML → PDF (html2pdf)",
             "type": "main",
             "index": 0
           }
@@ -245,6 +193,17 @@
         [
           {
             "node": "Webhook Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML → PDF (html2pdf)": {
+      "main": [
+        [
+          {
+            "node": "Upload naar Google Drive",
             "type": "main",
             "index": 0
           }
