@@ -3,28 +3,18 @@
 import { useState } from "react";
 import { useSession } from "next-auth/react";
 import {
-  Plus,
-  ExternalLink,
-  Trash2,
   ChevronUp,
+  ExternalLink,
   Github,
-  RefreshCw,
-  Loader2,
-  GitPullRequest,
-  CircleDot,
-  Bot,
-  AlertTriangle,
-  Check,
-  X,
+  Link2,
+  Plus,
+  Trash2,
+  Wrench,
 } from "lucide-react";
+import { deleteRepository, getRepositories } from "@/actions/repositories";
+import { deleteProjectLink } from "@/actions/project-links";
 import { RepositoryForm } from "@/components/repositories/repository-form";
-import { getRepositories, deleteRepository } from "@/actions/repositories";
-import {
-  getProjectRepoInfo,
-  checkProjectCopilotAgent,
-  promptGithubAgent,
-} from "@/actions/github";
-import type { GitHubRepoInfo, CopilotAgentCheck } from "@/services/githubService";
+import { ProjectLinkForm } from "@/components/projects/project-link-form";
 
 interface Repository {
   id: string;
@@ -34,145 +24,107 @@ interface Repository {
   issueBoardUrl: string | null;
 }
 
+interface ProjectLink {
+  id: string;
+  label: string;
+  url: string;
+  description: string | null;
+}
+
 interface Props {
   projectId: string;
   repositories: Repository[];
+  projectLinks: ProjectLink[];
 }
 
 export function ProjectGithubTab({
   projectId,
-  repositories: initialRepos,
+  repositories: initialRepositories,
+  projectLinks: initialProjectLinks,
 }: Props) {
   const { data: session } = useSession();
-  const [repos, setRepos] = useState<Repository[]>(initialRepos);
-  const [showForm, setShowForm] = useState(false);
-  const [deleting, setDeleting] = useState<string | null>(null);
-  const [repoInfo, setRepoInfo] = useState<Record<string, GitHubRepoInfo>>({});
-  const [copilotStatus, setCopilotStatus] = useState<
-    Record<string, CopilotAgentCheck>
-  >({});
-  const [loadingInfo, setLoadingInfo] = useState<string | null>(null);
-  const [loadingCopilot, setLoadingCopilot] = useState<string | null>(null);
+  const [repositories, setRepositories] = useState<Repository[]>(initialRepositories);
+  const [projectLinks, setProjectLinks] = useState<ProjectLink[]>(initialProjectLinks);
+  const [showRepositoryForm, setShowRepositoryForm] = useState(false);
+  const [showProjectLinkForm, setShowProjectLinkForm] = useState(false);
+  const [deletingRepositoryId, setDeletingRepositoryId] = useState<string | null>(null);
+  const [deletingProjectLinkId, setDeletingProjectLinkId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [promptText, setPromptText] = useState<Record<string, string>>({});
-  const [submittingPrompt, setSubmittingPrompt] = useState<string | null>(null);
-  const [promptResults, setPromptResults] = useState<Record<string, { url: string; number: number; copilotAssigned: boolean }>>({});
 
-  async function handleRepoAdded() {
-    setShowForm(false);
+  async function handleRepositoryAdded() {
+    setShowRepositoryForm(false);
     const result = await getRepositories(projectId);
     if (result.success && result.repositories) {
-      setRepos(result.repositories);
+      setRepositories(result.repositories);
     }
   }
 
-  async function handleDelete(repoId: string) {
+  function handleProjectLinkAdded(projectLink: ProjectLink) {
+    setShowProjectLinkForm(false);
+    setProjectLinks((current) => [...current, projectLink]);
+  }
+
+  async function handleDeleteRepository(repositoryId: string) {
     if (!session?.user?.id) return;
     if (!confirm("Deze repository uit het project verwijderen?")) return;
 
-    setDeleting(repoId);
+    setDeletingRepositoryId(repositoryId);
     try {
-      await deleteRepository(repoId, projectId, session.user.id);
-      setRepos((prev) => prev.filter((repo) => repo.id !== repoId));
-      setRepoInfo((prev) => {
-        const next = { ...prev };
-        delete next[repoId];
-        return next;
-      });
-      setCopilotStatus((prev) => {
-        const next = { ...prev };
-        delete next[repoId];
-        return next;
-      });
-    } finally {
-      setDeleting(null);
-    }
-  }
-
-  async function handleCheckRepo(repoId: string) {
-    setError(null);
-    setLoadingInfo(repoId);
-    try {
-      const result = await getProjectRepoInfo(projectId, repoId);
-      if (result.success && result.info) {
-        setRepoInfo((prev) => ({ ...prev, [repoId]: result.info }));
-      } else {
-        setError(result.error ?? "Repository-informatie ophalen mislukt");
+      const result = await deleteRepository(repositoryId, projectId, session.user.id);
+      if (!result.success) {
+        setError(result.error ?? "Repository verwijderen mislukt");
+        return;
       }
+
+      setRepositories((current) => current.filter((repo) => repo.id !== repositoryId));
     } finally {
-      setLoadingInfo(null);
+      setDeletingRepositoryId(null);
     }
   }
 
-  async function handleCheckCopilot(repoId: string) {
+  async function handleDeleteProjectLink(projectLinkId: string) {
     if (!session?.user?.id) return;
-    setError(null);
-    setLoadingCopilot(repoId);
+    if (!confirm("Deze link uit het project verwijderen?")) return;
 
+    setDeletingProjectLinkId(projectLinkId);
     try {
-      const result = await checkProjectCopilotAgent(
-        projectId,
-        repoId,
-        session.user.id
-      );
-
-      if (result.success && result.copilot) {
-        setCopilotStatus((prev) => ({ ...prev, [repoId]: result.copilot }));
-      } else {
-        setError(result.error ?? "Copilot-agent controleren mislukt");
+      const result = await deleteProjectLink(projectLinkId, projectId, session.user.id);
+      if (!result.success) {
+        setError(result.error ?? "Link verwijderen mislukt");
+        return;
       }
+
+      setProjectLinks((current) => current.filter((link) => link.id !== projectLinkId));
     } finally {
-      setLoadingCopilot(null);
-    }
-  }
-
-  async function handlePromptAgent(repoId: string) {
-    if (!session?.user?.id) return;
-    const text = promptText[repoId]?.trim();
-    if (!text) return;
-
-    setError(null);
-    setSubmittingPrompt(repoId);
-
-    try {
-      const result = await promptGithubAgent(projectId, repoId, text, session.user.id);
-      if (result.success) {
-        setPromptResults((prev) => ({ ...prev, [repoId]: { url: result.issue.url, number: result.issue.number, copilotAssigned: result.copilotAssigned } }));
-        setPromptText((prev) => ({ ...prev, [repoId]: "" }));
-      } else {
-        setError(result.error ?? "Agent prompt versturen mislukt");
-      }
-    } finally {
-      setSubmittingPrompt(null);
+      setDeletingProjectLinkId(null);
     }
   }
 
   return (
     <div className="space-y-6">
       {error && (
-        <div className="flex items-start gap-2 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
-          <span>{error}</span>
-          <button
-            onClick={() => setError(null)}
-            className="ml-auto text-red-500 hover:text-red-700"
-          >
-            <X className="h-4 w-4" />
-          </button>
+        <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
         </div>
       )}
 
-      <div>
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="flex items-center gap-2 font-semibold text-gray-900">
-            <Github className="h-4 w-4 text-gray-600" />
-            Repositories ({repos.length})
-          </h3>
+      <div className="card p-5">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="flex items-center gap-2 font-semibold text-gray-900">
+              <Github className="h-4 w-4 text-gray-600" />
+              Repositories
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Koppel een repository zodat je snel naar code en issues kunt navigeren.
+            </p>
+          </div>
+
           <button
-            onClick={() => setShowForm(!showForm)}
+            onClick={() => setShowRepositoryForm((open) => !open)}
             className="btn-secondary"
           >
-            {showForm ? (
+            {showRepositoryForm ? (
               <>
                 <ChevronUp className="h-4 w-4" />
                 Annuleren
@@ -186,206 +138,137 @@ export function ProjectGithubTab({
           </button>
         </div>
 
-        {showForm && (
-          <div className="card mb-4 p-5">
-            <h4 className="mb-4 text-sm font-semibold text-gray-900">
-              Repository koppelen
-            </h4>
-            <RepositoryForm projectId={projectId} onSuccess={handleRepoAdded} />
+        {showRepositoryForm && (
+          <div className="mb-5 rounded-lg border border-gray-100 p-4">
+            <RepositoryForm projectId={projectId} onSuccess={handleRepositoryAdded} />
           </div>
         )}
 
-        {repos.length > 0 ? (
-          <div className="space-y-4">
-            {repos.map((repo) => (
-              <div key={repo.id} className="card">
-                <div className="flex items-center justify-between border-b border-gray-50 px-5 py-4">
-                  <div>
-                    <a
-                      href={repo.repoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
-                    >
-                      {repo.repoName}
-                      <ExternalLink className="h-3 w-3" />
-                    </a>
-                    <div className="mt-0.5 space-x-2 text-xs text-gray-400">
-                      <span>Branch: {repo.defaultBranch}</span>
-                      {repo.issueBoardUrl && (
-                        <>
-                          <span>&middot;</span>
-                          <a
-                            href={repo.issueBoardUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-blue-500 hover:underline"
-                          >
-                            Issues
-                          </a>
-                        </>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      onClick={() => handleCheckRepo(repo.id)}
-                      disabled={loadingInfo === repo.id}
-                      className="btn-secondary text-xs"
-                    >
-                      {loadingInfo === repo.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <RefreshCw className="h-3.5 w-3.5" />
-                      )}
-                      Controleren
-                    </button>
-                    <button
-                      onClick={() => handleCheckCopilot(repo.id)}
-                      disabled={loadingCopilot === repo.id}
-                      className="btn-secondary text-xs"
-                    >
-                      {loadingCopilot === repo.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Bot className="h-3.5 w-3.5" />
-                      )}
-                      Copilot
-                    </button>
-                    <button
-                      onClick={() => handleDelete(repo.id)}
-                      disabled={deleting === repo.id}
-                      className="p-1 text-gray-400 transition-colors hover:text-red-600"
-                      title="Repository verwijderen"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {repoInfo[repo.id] && (
-                  <div className="border-b border-gray-50 bg-gray-50/50 px-5 py-3">
-                    <div className="grid grid-cols-2 gap-3 text-xs sm:grid-cols-4">
-                      <div>
-                        <span className="block text-gray-400">Zichtbaarheid</span>
-                        <span className="font-medium text-gray-700">
-                          {repoInfo[repo.id].visibility}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="flex items-center gap-1 text-gray-400">
-                          <CircleDot className="h-3 w-3" /> Open issues
-                        </span>
-                        <span className="font-medium text-gray-700">
-                          {repoInfo[repo.id].openIssuesCount}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="flex items-center gap-1 text-gray-400">
-                          <GitPullRequest className="h-3 w-3" /> Open PR&apos;s
-                        </span>
-                        <span className="font-medium text-gray-700">
-                          {repoInfo[repo.id].openPrCount}
-                        </span>
-                      </div>
-                      <div>
-                        <span className="block text-gray-400">Standaardbranch</span>
-                        <span className="font-medium text-gray-700">
-                          {repoInfo[repo.id].defaultBranch}
-                        </span>
-                      </div>
-                    </div>
-
-                    {repoInfo[repo.id].latestCommit && (
-                      <div className="mt-2 text-xs text-gray-500">
-                        <span className="text-gray-400">Laatste commit: </span>
-                        <code className="rounded bg-gray-100 px-1.5 py-0.5 text-[11px]">
-                          {repoInfo[repo.id].latestCommit!.sha}
-                        </code>{" "}
-                        {repoInfo[repo.id].latestCommit!.message}{" "}
-                        <span className="text-gray-400">
-                          door {repoInfo[repo.id].latestCommit!.author}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {copilotStatus[repo.id] && (
-                  <div className="flex items-center gap-2 bg-gray-50/50 px-5 py-2.5 text-xs">
-                    <Bot className="h-3.5 w-3.5 text-gray-400" />
-                    <span className="text-gray-500">Copilot coding agent:</span>
-                    {copilotStatus[repo.id].available ? (
-                      <span className="flex items-center gap-1 font-medium text-green-600">
-                        <Check className="h-3.5 w-3.5" />
-                        Beschikbaar
-                      </span>
-                    ) : (
-                      <span className="flex items-center gap-1 font-medium text-gray-400">
-                        <X className="h-3.5 w-3.5" />
-                        Niet beschikbaar
-                      </span>
-                    )}
-                  </div>
-                )}
-
-                <div className="border-t border-gray-50 px-5 py-4">
-                  <p className="mb-2 flex items-center gap-1.5 text-xs font-semibold text-gray-700">
-                    <Bot className="h-3.5 w-3.5" />
-                    Prompt naar Copilot agent
+        {repositories.length > 0 ? (
+          <div className="space-y-3">
+            {repositories.map((repo) => (
+              <div
+                key={repo.id}
+                className="flex items-start justify-between gap-4 rounded-lg border border-gray-100 px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <a
+                    href={repo.repoUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
+                  >
+                    {repo.repoName}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                  <p className="mt-1 text-xs text-gray-400">
+                    Branch: {repo.defaultBranch}
+                    {repo.issueBoardUrl ? " · " : ""}
+                    {repo.issueBoardUrl ? (
+                      <a
+                        href={repo.issueBoardUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-500 hover:underline"
+                      >
+                        Issues openen
+                      </a>
+                    ) : null}
                   </p>
-                  <textarea
-                    className="form-textarea text-sm"
-                    rows={3}
-                    placeholder="Beschrijf wat de agent moet doen, bijv. 'Voeg een dark mode toggle toe aan de navbar'"
-                    value={promptText[repo.id] ?? ""}
-                    onChange={(e) =>
-                      setPromptText((prev) => ({ ...prev, [repo.id]: e.target.value }))
-                    }
-                  />
-                  <div className="mt-2 flex items-center gap-3">
-                    <button
-                      onClick={() => handlePromptAgent(repo.id)}
-                      disabled={submittingPrompt === repo.id || !promptText[repo.id]?.trim()}
-                      className="btn-primary text-xs"
-                    >
-                      {submittingPrompt === repo.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Bot className="h-3.5 w-3.5" />
-                      )}
-                      Versturen
-                    </button>
-                    {promptResults[repo.id] && (
-                      <span className="flex items-center gap-2 text-xs">
-                        <a
-                          href={promptResults[repo.id].url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="flex items-center gap-1 text-blue-600 hover:underline"
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                          Issue #{promptResults[repo.id].number}
-                        </a>
-                        {promptResults[repo.id].copilotAssigned ? (
-                          <span className="flex items-center gap-1 text-green-600">
-                            <Check className="h-3 w-3" />
-                            Copilot assigned
-                          </span>
-                        ) : (
-                          <span className="text-gray-400">· assignen mislukt, doe dit handmatig in GitHub</span>
-                        )}
-                      </span>
-                    )}
-                  </div>
                 </div>
+
+                <button
+                  onClick={() => handleDeleteRepository(repo.id)}
+                  disabled={deletingRepositoryId === repo.id}
+                  className="p-1 text-gray-400 transition-colors hover:text-red-600"
+                  title="Repository verwijderen"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
               </div>
             ))}
           </div>
         ) : (
-          <div className="card py-8 text-center text-sm text-gray-400">
-            Geen repositories gekoppeld. Voeg er hierboven een toe.
+          <div className="rounded-lg border border-dashed border-gray-200 px-4 py-8 text-sm text-gray-400">
+            Nog geen repositories gekoppeld.
+          </div>
+        )}
+      </div>
+
+      <div className="card p-5">
+        <div className="mb-5 flex items-start justify-between gap-4">
+          <div>
+            <h3 className="flex items-center gap-2 font-semibold text-gray-900">
+              <Wrench className="h-4 w-4 text-gray-600" />
+              Links & tools
+            </h3>
+            <p className="mt-1 text-sm text-gray-500">
+              Voeg meerdere projectlinks toe voor design, hosting, dashboards of andere tools.
+            </p>
+          </div>
+
+          <button
+            onClick={() => setShowProjectLinkForm((open) => !open)}
+            className="btn-secondary"
+          >
+            {showProjectLinkForm ? (
+              <>
+                <ChevronUp className="h-4 w-4" />
+                Annuleren
+              </>
+            ) : (
+              <>
+                <Plus className="h-4 w-4" />
+                Link toevoegen
+              </>
+            )}
+          </button>
+        </div>
+
+        {showProjectLinkForm && (
+          <div className="mb-5 rounded-lg border border-gray-100 p-4">
+            <ProjectLinkForm projectId={projectId} onSuccess={handleProjectLinkAdded} />
+          </div>
+        )}
+
+        {projectLinks.length > 0 ? (
+          <div className="space-y-3">
+            {projectLinks.map((link) => (
+              <div
+                key={link.id}
+                className="flex items-start justify-between gap-4 rounded-lg border border-gray-100 px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline"
+                  >
+                    <Link2 className="h-3.5 w-3.5" />
+                    {link.label}
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                  <p className="mt-1 break-all text-xs text-gray-400">{link.url}</p>
+                  {link.description && (
+                    <p className="mt-1 text-sm text-gray-600">{link.description}</p>
+                  )}
+                </div>
+
+                <button
+                  onClick={() => handleDeleteProjectLink(link.id)}
+                  disabled={deletingProjectLinkId === link.id}
+                  className="p-1 text-gray-400 transition-colors hover:text-red-600"
+                  title="Link verwijderen"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="rounded-lg border border-dashed border-gray-200 px-4 py-8 text-sm text-gray-400">
+            Nog geen extra projectlinks toegevoegd.
           </div>
         )}
       </div>

@@ -3,7 +3,6 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { getProject } from "@/actions/projects";
 import { getCommunicationEntries } from "@/actions/communication";
-import { getRepositories } from "@/actions/repositories";
 import { getProposalDrafts } from "@/actions/proposals";
 import { getInvoices } from "@/actions/invoices";
 import { getN8nWebhookUrl } from "@/lib/env";
@@ -52,17 +51,17 @@ export default async function ProjectDetailPage({
 
   const project = projectResult.project;
   const n8nEnabled = Boolean(getN8nWebhookUrl());
+  const repositories = project.repositories ?? [];
+  const projectLinks = project.projectLinks ?? [];
 
-  const [commResult, reposResult, proposalsResult, invoicesResult, businessSettings] = await Promise.all([
+  const [commResult, proposalsResult, invoicesResult, businessSettings] = await Promise.all([
     getCommunicationEntries(id),
-    getRepositories(id),
     getProposalDrafts(id),
     getInvoices({ projectId: id }),
     getResolvedBusinessSettings(),
   ]);
 
   const communications = commResult.success ? commResult.entries ?? [] : [];
-  const repositories = reposResult.success ? reposResult.repositories ?? [] : [];
   const proposals = proposalsResult.success
     ? (proposalsResult.proposals ?? []).map((proposal) => ({
         id: proposal.id,
@@ -116,7 +115,7 @@ export default async function ProjectDetailPage({
 
   const tabs = TABS.map((t) => {
     if (t.id === "logbook") return { ...t, count: communications.length };
-    if (t.id === "github") return { ...t, count: repositories.length };
+    if (t.id === "github") return { ...t, count: repositories.length + projectLinks.length };
     if (t.id === "invoices") return { ...t, count: proposals.length + projectInvoices.length };
     return t;
   });
@@ -168,6 +167,9 @@ export default async function ProjectDetailPage({
             <GitBranch className="h-4 w-4 text-gray-400" />
             <span className="text-gray-600">
               {repositories.length} repo{repositories.length !== 1 ? "'s" : ""}
+              {projectLinks.length > 0
+                ? `, ${projectLinks.length} link${projectLinks.length !== 1 ? "s" : ""}`
+                : ""}
             </span>
           </div>
           <div className="flex items-center gap-2 text-sm">
@@ -201,7 +203,11 @@ export default async function ProjectDetailPage({
       )}
 
       {activeTab === "github" && (
-        <ProjectGithubTab projectId={id} repositories={repositories} />
+        <ProjectGithubTab
+          projectId={id}
+          repositories={repositories}
+          projectLinks={projectLinks}
+        />
       )}
 
       {activeTab === "invoices" && (
@@ -261,6 +267,12 @@ function OverviewTab({
       repoName: string;
       repoUrl: string;
       defaultBranch: string;
+    }[];
+    projectLinks: {
+      id: string;
+      label: string;
+      url: string;
+      description: string | null;
     }[];
   };
 
@@ -372,6 +384,32 @@ function OverviewTab({
                   <p className="text-xs text-gray-400">
                     Branch: {repo.defaultBranch}
                   </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {p.projectLinks.length > 0 && (
+          <div className="card p-5">
+            <h3 className="mb-3 text-sm font-semibold text-gray-900">
+              Links & tools
+            </h3>
+            <div className="space-y-3">
+              {p.projectLinks.map((link) => (
+                <div key={link.id}>
+                  <a
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-1 text-sm text-blue-600 hover:underline"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    {link.label}
+                  </a>
+                  {link.description && (
+                    <p className="text-xs text-gray-400">{link.description}</p>
+                  )}
                 </div>
               ))}
             </div>

@@ -20,7 +20,12 @@ const projectDetailInclude = {
   owner: {
     select: userBasicSelect,
   },
-  repositories: true,
+  repositories: {
+    orderBy: { createdAt: "asc" } as const,
+  },
+  projectLinks: {
+    orderBy: { createdAt: "asc" } as const,
+  },
   communicationEntries: {
     orderBy: { occurredAt: "desc" } as const,
     take: 10,

@@ -10,7 +10,6 @@
 import { Worker, type Job } from "bullmq";
 import { type JobName, type JobData, QUEUE_NAME, getRedisConnection } from "@/lib/queue";
 import { logger } from "@/lib/logger";
-import { processAgentBriefing } from "./jobs/agent-briefing";
 import { processGitHubSync } from "./jobs/github-sync";
 
 // ─── Job router ───────────────────────────────────────────────────────────────
@@ -19,9 +18,6 @@ async function processJob(job: Job<JobData, unknown, JobName>) {
   logger.info("Processing worker job", { jobName: job.name, jobId: job.id?.toString() });
 
   switch (job.name) {
-    case "agent:generate-briefing":
-      return processAgentBriefing(job.data as Parameters<typeof processAgentBriefing>[0]);
-
     case "github:sync-repo":
       return processGitHubSync(job.data as Parameters<typeof processGitHubSync>[0]);
 

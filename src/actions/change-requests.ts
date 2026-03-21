@@ -45,12 +45,6 @@ export async function getChangeRequest(id: string) {
         assignedTo: {
           select: { id: true, name: true, email: true },
         },
-        agentRuns: {
-          orderBy: { createdAt: "desc" },
-          include: {
-            initiatedBy: { select: { id: true, name: true } },
-          },
-        },
       },
     });
 

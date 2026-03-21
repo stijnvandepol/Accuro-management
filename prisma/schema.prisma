@@ -168,6 +168,7 @@ model ProjectWorkspace {
   changeRequests       ChangeRequest[]
   internalNotes        InternalNote[]
   repositories         ProjectRepository[]
+  projectLinks         ProjectLink[]
   agentRuns            AgentRun[]
   invoices             Invoice[]
   proposalDrafts       ProposalDraft[]
@@ -258,6 +259,20 @@ model ProjectRepository {
 
   @@index([projectId])
   @@map("project_repositories")
+}
+
+model ProjectLink {
+  id          String   @id @default(cuid())
+  projectId   String
+  label       String
+  url         String
+  description String?
+  createdAt   DateTime @default(now())
+
+  project ProjectWorkspace @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([projectId])
+  @@map("project_links")
 }
 
 model AgentRun {

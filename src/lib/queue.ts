@@ -11,12 +11,6 @@ import { getRedisUrl } from "@/lib/env";
 
 // ─── Job type definitions ─────────────────────────────────────────────────────
 
-export type AgentBriefingJobData = {
-  projectId: string;
-  changeRequestId: string | null;
-  actorUserId: string;
-};
-
 export type InvoiceReminderJobData = {
   invoiceId: string;
   clientEmail: string;
@@ -33,14 +27,12 @@ export type GitHubSyncJobData = {
 };
 
 export type JobData =
-  | AgentBriefingJobData
   | InvoiceReminderJobData
-  | GitHubSyncJobData
+  | GitHubSyncJobData;
 
 export type JobName =
-  | "agent:generate-briefing"
   | "invoice:send-reminder"
-  | "github:sync-repo"
+  | "github:sync-repo";
 
 // ─── Redis connection ─────────────────────────────────────────────────────────
 
