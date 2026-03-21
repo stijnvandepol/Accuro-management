@@ -2,12 +2,14 @@
 
 import { prisma } from "@/lib/db";
 import { ZodError } from "zod";
+import { getSession } from "@/lib/auth";
 import { createAuditLog } from "@/lib/audit";
 import {
   CommunicationFormSchema,
   type CommunicationFormData,
 } from "@/lib/validations/communication";
 import { logger } from "@/lib/logger";
+import { normalizeEmail } from "@/lib/normalizers";
 import { toFieldErrors } from "@/lib/validation-errors";
 
 export async function getCommunicationEntries(projectId: string, limit = 100) {
@@ -35,12 +37,20 @@ export async function createCommunicationEntry(
   actorUserId: string
 ) {
   try {
+    const resolvedActorUserId = await resolveActorUserId(actorUserId);
+    if (!resolvedActorUserId) {
+      return {
+        success: false as const,
+        error: "Je sessie is niet meer geldig. Log opnieuw in.",
+      };
+    }
+
     const validated = CommunicationFormSchema.parse(data);
 
     const entry = await prisma.communicationEntry.create({
       data: {
         projectId: validated.projectId,
-        authorUserId: actorUserId,
+        authorUserId: resolvedActorUserId,
         type: validated.type,
         subject: validated.subject,
         content: validated.content,
@@ -53,7 +63,7 @@ export async function createCommunicationEntry(
     });
 
     await createAuditLog({
-      actorUserId,
+      actorUserId: resolvedActorUserId,
       entityType: "CommunicationEntry",
       entityId: entry.id,
       action: "CREATE",
@@ -75,6 +85,40 @@ export async function createCommunicationEntry(
     }
     return { success: false as const, error: "Communicatie aanmaken mislukt" };
   }
+}
+
+async function resolveActorUserId(actorUserId: string) {
+  const actor = await prisma.user.findUnique({
+    where: { id: actorUserId },
+    select: { id: true },
+  });
+
+  if (actor) {
+    return actor.id;
+  }
+
+  const session = await getSession();
+  const sessionEmail = session?.user?.email
+    ? normalizeEmail(session.user.email)
+    : null;
+
+  if (!sessionEmail) {
+    return null;
+  }
+
+  const userByEmail = await prisma.user.findUnique({
+    where: { email: sessionEmail },
+    select: { id: true },
+  });
+
+  if (userByEmail) {
+    logger.warn("Resolved stale session user ID while creating communication entry", {
+      requestedActorUserId: actorUserId,
+      resolvedActorUserId: userByEmail.id,
+    });
+  }
+
+  return userByEmail?.id ?? null;
 }
 
 export async function deleteCommunicationEntry(
