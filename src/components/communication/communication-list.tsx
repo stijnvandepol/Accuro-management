@@ -4,7 +4,8 @@ import { useState } from "react";
 import { formatDateTime } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { CommunicationType } from "@prisma/client";
-import { ChevronDown, ChevronUp, Link as LinkIcon, Lock } from "lucide-react";
+import { ChevronDown, ChevronUp, Link as LinkIcon, Loader2, Lock, Trash2 } from "lucide-react";
+import { deleteCommunicationEntry } from "@/actions/communication";
 
 interface CommunicationEntry {
   id: string;
@@ -21,6 +22,8 @@ interface CommunicationEntry {
 
 interface Props {
   entries: CommunicationEntry[];
+  actorUserId?: string;
+  onDeleted?: () => void | Promise<void>;
 }
 
 const TYPE_LABELS: Record<CommunicationType, string> = {
@@ -46,10 +49,49 @@ const TYPE_VARIANTS: Record<
   OTHER: "default",
 };
 
-function EntryCard({ entry }: { entry: CommunicationEntry }) {
+function EntryCard({
+  entry,
+  actorUserId,
+  onDeleted,
+}: {
+  entry: CommunicationEntry;
+  actorUserId?: string;
+  onDeleted?: () => void | Promise<void>;
+}) {
   const [expanded, setExpanded] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const isLong = entry.content.length > 200;
   const preview = isLong && !expanded ? entry.content.slice(0, 200) + "…" : entry.content;
+
+  async function handleDelete() {
+    if (!actorUserId) {
+      setDeleteError("Je sessie is verlopen. Ververs de pagina.");
+      return;
+    }
+
+    const confirmed = window.confirm("Weet je zeker dat je dit communicatie-item wilt verwijderen?");
+    if (!confirmed) {
+      return;
+    }
+
+    setDeleting(true);
+    setDeleteError(null);
+
+    try {
+      const result = await deleteCommunicationEntry(entry.id, actorUserId);
+      if (!result.success) {
+        setDeleteError(result.error ?? "Verwijderen mislukt.");
+        return;
+      }
+
+      await onDeleted?.();
+    } catch {
+      setDeleteError("Er is een onverwachte fout opgetreden.");
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <div className="border border-gray-200 rounded-lg p-4 bg-white">
@@ -68,6 +110,27 @@ function EntryCard({ entry }: { entry: CommunicationEntry }) {
         <span className="text-xs text-gray-400 flex-shrink-0">
           {formatDateTime(entry.occurredAt)}
         </span>
+      </div>
+
+      <div className="mb-2 flex justify-end">
+        <button
+          type="button"
+          onClick={handleDelete}
+          disabled={deleting}
+          className="inline-flex items-center gap-1 text-xs text-red-600 hover:text-red-700 disabled:opacity-60"
+        >
+          {deleting ? (
+            <>
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              Verwijderen...
+            </>
+          ) : (
+            <>
+              <Trash2 className="h-3.5 w-3.5" />
+              Verwijderen
+            </>
+          )}
+        </button>
       </div>
 
       <h4 className="font-medium text-gray-900 text-sm mb-1">{entry.subject}</h4>
@@ -120,11 +183,15 @@ function EntryCard({ entry }: { entry: CommunicationEntry }) {
           ))}
         </div>
       )}
+
+      {deleteError && (
+        <p className="mt-3 text-xs text-red-600">{deleteError}</p>
+      )}
     </div>
   );
 }
 
-export function CommunicationList({ entries }: Props) {
+export function CommunicationList({ entries, actorUserId, onDeleted }: Props) {
   if (entries.length === 0) {
     return (
       <div className="text-center py-10 text-sm text-gray-400">
@@ -136,7 +203,7 @@ export function CommunicationList({ entries }: Props) {
   return (
     <div className="space-y-3">
       {entries.map((entry) => (
-        <EntryCard key={entry.id} entry={entry} />
+        <EntryCard key={entry.id} entry={entry} actorUserId={actorUserId} onDeleted={onDeleted} />
       ))}
     </div>
   );

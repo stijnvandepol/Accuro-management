@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Plus, ChevronUp } from "lucide-react";
 import { CommunicationForm } from "@/components/communication/communication-form";
 import { CommunicationList } from "@/components/communication/communication-list";
@@ -34,6 +35,7 @@ export function ProjectCommunicationTab({
   initialEntries,
   client,
 }: Props) {
+  const { data: session } = useSession();
   const [entries, setEntries] = useState<CommunicationEntry[]>(initialEntries);
   const [showForm, setShowForm] = useState(false);
 
@@ -81,7 +83,7 @@ export function ProjectCommunicationTab({
         <h4 className="text-xs font-semibold uppercase tracking-wide text-gray-400">
           Geschiedenis ({entries.length})
         </h4>
-        <CommunicationList entries={entries} />
+        <CommunicationList entries={entries} actorUserId={session?.user?.id} onDeleted={handleSuccess} />
       </section>
     </div>
   );
