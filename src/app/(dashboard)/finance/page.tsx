@@ -1,11 +1,17 @@
 import Link from "next/link";
 import { getInvoices, getFinanceOverview } from "@/actions/invoices";
+import { YearlyReportCard } from "@/components/finance/yearly-report-card";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { TrendingUp, Clock, AlertTriangle, Calendar, Plus } from "lucide-react";
 import { InvoiceStatus } from "@prisma/client";
 import { InvoiceStatusBadge } from "@/components/projects/status-badge";
 import { MarkPaidButton } from "./mark-paid-button";
 import { DeleteInvoiceButton } from "./delete-invoice-button";
+import {
+  getAvailableYearlyReportYears,
+  getYearlyFinancialReport,
+  normalizeReportYear,
+} from "@/lib/reports/yearly-financial-report";
 
 const STATUS_TABS = [
   { label: "Alle", value: "" },
@@ -18,15 +24,22 @@ const STATUS_TABS = [
 export default async function FinancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string }>;
+  searchParams: Promise<{ status?: string; reportYear?: string; includeUnpaid?: string }>;
 }) {
-  const { status } = await searchParams;
+  const { status, reportYear, includeUnpaid } = await searchParams;
   const activeStatus = status as InvoiceStatus | undefined;
+  const selectedReportYear = normalizeReportYear(reportYear);
+  const reportIncludesUnpaid = includeUnpaid === "true";
 
-  const [overviewResult, invoicesResult, overdueResult] = await Promise.all([
+  const [overviewResult, invoicesResult, overdueResult, yearlyReport, availableReportYears] = await Promise.all([
     getFinanceOverview(),
     getInvoices(activeStatus ? { status: activeStatus } : undefined),
     getInvoices({ status: InvoiceStatus.OVERDUE }),
+    getYearlyFinancialReport({
+      year: selectedReportYear,
+      includeUnpaid: reportIncludesUnpaid,
+    }),
+    getAvailableYearlyReportYears(),
   ]);
 
   const overview = overviewResult.success && "overview" in overviewResult ? overviewResult.overview : null;
@@ -111,6 +124,14 @@ export default async function FinancePage({
         })}
       </div>
 
+      <YearlyReportCard
+        report={yearlyReport}
+        availableYears={availableReportYears}
+        selectedYear={selectedReportYear}
+        includeUnpaid={reportIncludesUnpaid}
+        activeStatus={activeStatus}
+      />
+
       {/* Overdue invoices (if any) */}
       {overdueInvoices.length > 0 && !activeStatus && (
         <div className="card">
@@ -180,9 +201,11 @@ export default async function FinancePage({
           {STATUS_TABS.map((tab) => (
             <Link
               key={tab.value}
-              href={
-                tab.value ? `/finance?status=${tab.value}` : "/finance"
-              }
+              href={buildFinanceHref({
+                status: tab.value || undefined,
+                reportYear: selectedReportYear,
+                includeUnpaid: reportIncludesUnpaid,
+              })}
               className={`px-3 py-1.5 text-sm font-medium border-b-2 transition-colors -mb-px ${
                 (tab.value === "" && !activeStatus) ||
                 tab.value === activeStatus
@@ -277,4 +300,29 @@ export default async function FinancePage({
       </div>
     </div>
   );
+}
+
+function buildFinanceHref({
+  status,
+  reportYear,
+  includeUnpaid,
+}: {
+  status?: string;
+  reportYear: number;
+  includeUnpaid: boolean;
+}) {
+  const query = new URLSearchParams();
+
+  if (status) {
+    query.set("status", status);
+  }
+
+  query.set("reportYear", String(reportYear));
+
+  if (includeUnpaid) {
+    query.set("includeUnpaid", "true");
+  }
+
+  const search = query.toString();
+  return search ? `/finance?${search}` : "/finance";
 }
