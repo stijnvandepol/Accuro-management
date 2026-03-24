@@ -1,0 +1,108 @@
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+
+from app.database import get_db
+from app.core.security import verify_password, hash_password, create_access_token, create_refresh_token, decode_token
+from app.core.auth import store_refresh_token, get_stored_refresh_token, delete_refresh_token
+from app.core.dependencies import get_current_user, get_client_ip
+from app.services.audit_service import create_audit_log
+from app.models.user import User
+from app.schemas.auth import LoginRequest, TokenResponse, RefreshRequest, PasswordChangeRequest
+
+router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
+
+
+@router.post("/login", response_model=TokenResponse)
+async def login(
+    body: LoginRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+):
+    result = await db.execute(
+        select(User).where(User.email == body.email.lower().strip(), User.is_active == True)
+    )
+    user = result.scalar_one_or_none()
+    if not user or not verify_password(body.password, user.password_hash):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password",
+        )
+
+    access_token = create_access_token({"sub": user.id, "role": user.role})
+    refresh_token = create_refresh_token({"sub": user.id})
+
+    user_agent = request.headers.get("User-Agent", "")
+    await store_refresh_token(user.id, refresh_token, user_agent)
+
+    await create_audit_log(
+        db, "User", user.id, "LOGIN",
+        actor_user_id=user.id,
+        ip_address=get_client_ip(request),
+        user_agent=user_agent,
+    )
+
+    return TokenResponse(access_token=access_token, refresh_token=refresh_token)
+
+
+@router.post("/refresh", response_model=TokenResponse)
+async def refresh_token(body: RefreshRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    payload = decode_token(body.refresh_token)
+    if not payload or payload.get("type") != "refresh":
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
+
+    user_id = payload.get("sub")
+    stored = await get_stored_refresh_token(user_id)
+    if stored != body.refresh_token:
+        # Possible token theft — invalidate all tokens for this user
+        await delete_refresh_token(user_id)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token reuse detected")
+
+    result = await db.execute(select(User).where(User.id == user_id, User.is_active == True))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+
+    new_access = create_access_token({"sub": user.id, "role": user.role})
+    new_refresh = create_refresh_token({"sub": user.id})
+
+    user_agent = request.headers.get("User-Agent", "")
+    await store_refresh_token(user.id, new_refresh, user_agent)
+
+    return TokenResponse(access_token=new_access, refresh_token=new_refresh)
+
+
+@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
+async def logout(current_user: User = Depends(get_current_user)):
+    await delete_refresh_token(current_user.id)
+
+
+@router.get("/me")
+async def get_me(current_user: User = Depends(get_current_user)):
+    return {
+        "id": current_user.id,
+        "name": current_user.name,
+        "email": current_user.email,
+        "role": current_user.role,
+        "is_active": current_user.is_active,
+    }
+
+
+@router.put("/me/password", status_code=status.HTTP_204_NO_CONTENT)
+async def change_password(
+    body: PasswordChangeRequest,
+    request: Request,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if not verify_password(body.current_password, current_user.password_hash):
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
+
+    current_user.password_hash = hash_password(body.new_password)
+    db.add(current_user)
+
+    await create_audit_log(
+        db, "User", current_user.id, "PASSWORD_CHANGE",
+        actor_user_id=current_user.id,
+        ip_address=get_client_ip(request),
+    )
