@@ -119,8 +119,11 @@
       <p v-if="!links.length" class="text-center text-sm text-zinc-600 py-8">Geen links</p>
     </div>
 
-    <!-- Tab: Facturen (NEW) -->
+    <!-- Tab: Facturen -->
     <div v-if="activeTab === 'invoices'" class="space-y-3">
+      <div class="flex justify-end">
+        <button class="btn-secondary text-xs" @click="openInvoiceDialog"><i class="pi pi-plus text-xs"></i> Nieuwe factuur</button>
+      </div>
       <div v-for="inv in invoices" :key="inv.id" class="card p-4 flex items-center justify-between">
         <div class="flex items-center gap-4">
           <span class="font-mono text-xs text-zinc-300">{{ inv.invoice_number }}</span>
@@ -130,6 +133,8 @@
         <div class="flex items-center gap-3">
           <span class="font-mono text-sm font-medium text-zinc-200">{{ formatCurrency(inv.total_amount) }}</span>
           <button class="btn-icon" @click="downloadInvoicePdf(inv)" title="PDF"><i class="pi pi-file-pdf text-xs"></i></button>
+          <button v-if="inv.status !== 'PAID'" class="btn-icon text-green-400" @click="markInvoicePaid(inv)" title="Betaald markeren"><i class="pi pi-check text-xs"></i></button>
+          <button class="btn-icon text-red-400" @click="deleteInvoice(inv)" title="Verwijderen"><i class="pi pi-trash text-xs"></i></button>
         </div>
       </div>
       <p v-if="!invoices.length" class="text-center text-sm text-zinc-600 py-8">Geen facturen voor dit project</p>
@@ -193,6 +198,42 @@
       </form>
     </Dialog>
 
+    <!-- Invoice Dialog -->
+    <Dialog v-model:visible="showInvoiceDialog" header="Nieuwe factuur" modal :style="{ width: '520px' }">
+      <form @submit.prevent="createInvoice" class="space-y-4">
+        <div class="grid grid-cols-2 gap-4">
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Subtotaal (excl. BTW)</label>
+            <InputNumber v-model="invoiceForm.subtotal" mode="currency" currency="EUR" locale="nl-NL" class="w-full" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">BTW-tarief</label>
+            <InputNumber v-model="invoiceForm.vat_rate" suffix="%" class="w-full" :min="0" :max="100" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Factuurdatum</label>
+            <Calendar v-model="invoiceForm.issue_date" dateFormat="dd-mm-yy" class="w-full" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Vervaldatum</label>
+            <Calendar v-model="invoiceForm.due_date" dateFormat="dd-mm-yy" class="w-full" />
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Omschrijving</label>
+          <textarea v-model="invoiceForm.description" class="input min-h-[60px]" required />
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Notities</label>
+          <textarea v-model="invoiceForm.notes" class="input min-h-[40px]" />
+        </div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-zinc-800">
+          <button type="button" class="btn-secondary" @click="showInvoiceDialog = false">Annuleren</button>
+          <button type="submit" class="btn-primary" :disabled="saving">Aanmaken</button>
+        </div>
+      </form>
+    </Dialog>
+
     <!-- Edit Project Dialog -->
     <Dialog v-model:visible="showEditDialog" header="Project bewerken" modal :style="{ width: '560px' }">
       <form @submit.prevent="updateProject" class="space-y-4">
@@ -220,6 +261,7 @@ import { useToast } from 'primevue/usetoast'
 import Dialog from 'primevue/dialog'
 import Dropdown from 'primevue/dropdown'
 import Calendar from 'primevue/calendar'
+import InputNumber from 'primevue/inputnumber'
 
 const route = useRoute()
 const router = useRouter()
@@ -244,12 +286,14 @@ const showCRDialog = ref(false)
 const showRepoDialog = ref(false)
 const showLinkDialog = ref(false)
 const showEditDialog = ref(false)
+const showInvoiceDialog = ref(false)
 
 const commForm = ref<any>({ type: 'EMAIL', subject: '', content: '', occurred_at: new Date() })
 const crForm = ref<any>({ title: '', description: '', source_type: 'INTERNAL', impact: 'MEDIUM' })
 const repoForm = ref<any>({ repo_name: '', repo_url: '', default_branch: 'main' })
 const linkForm = ref<any>({ label: '', url: '', description: '' })
 const editForm = ref<any>({})
+const invoiceForm = ref<any>({ subtotal: 0, vat_rate: 21, issue_date: new Date(), due_date: new Date(Date.now() + 30 * 86400000), description: '', notes: '' })
 
 const statusOptions = [
   { label: 'Lead', value: 'LEAD' }, { label: 'Intake', value: 'INTAKE' },
@@ -371,5 +415,52 @@ async function updateProject() {
 async function downloadInvoicePdf(inv: any) {
   try { const { data } = await invoicesApi.downloadPdf(inv.id); downloadBlob(data, `factuur-${inv.invoice_number}.pdf`) }
   catch { toast.add({ severity: 'error', summary: 'PDF mislukt', life: 5000 }) }
+}
+
+function openInvoiceDialog() {
+  invoiceForm.value = { subtotal: 0, vat_rate: 21, issue_date: new Date(), due_date: new Date(Date.now() + 30 * 86400000), description: '', notes: '' }
+  showInvoiceDialog.value = true
+}
+
+function fmtDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+async function createInvoice() {
+  saving.value = true
+  try {
+    await invoicesApi.create({
+      client_id: project.value.client_id,
+      project_id: project.value.id,
+      subtotal: invoiceForm.value.subtotal,
+      vat_rate: invoiceForm.value.vat_rate,
+      issue_date: fmtDate(invoiceForm.value.issue_date),
+      due_date: fmtDate(invoiceForm.value.due_date),
+      description: invoiceForm.value.description,
+      notes: invoiceForm.value.notes || undefined,
+    })
+    showInvoiceDialog.value = false
+    const { data } = await invoicesApi.list({ project_id: project.value.id })
+    invoices.value = data
+    toast.add({ severity: 'success', summary: 'Factuur aangemaakt', life: 3000 })
+  } catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+  saving.value = false
+}
+
+async function markInvoicePaid(inv: any) {
+  try {
+    await invoicesApi.markPaid(inv.id)
+    const { data } = await invoicesApi.list({ project_id: project.value.id })
+    invoices.value = data
+    toast.add({ severity: 'success', summary: 'Factuur betaald', life: 3000 })
+  } catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+}
+
+async function deleteInvoice(inv: any) {
+  try {
+    await invoicesApi.delete(inv.id)
+    invoices.value = invoices.value.filter(i => i.id !== inv.id)
+    toast.add({ severity: 'success', summary: 'Factuur verwijderd', life: 3000 })
+  } catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
 }
 </script>
