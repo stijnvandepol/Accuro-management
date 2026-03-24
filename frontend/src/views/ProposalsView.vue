@@ -54,6 +54,7 @@ import { ref, onMounted } from 'vue'
 import { proposalsApi, clientsApi } from '@/api/services'
 import { useFormatting } from '@/composables/useFormatting'
 import { useToast } from 'primevue/usetoast'
+import { useErrorHandler } from '@/composables/useErrorHandler'
 import { useConfirm } from 'primevue/useconfirm'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -62,6 +63,7 @@ import Dropdown from 'primevue/dropdown'
 import InputNumber from 'primevue/inputnumber'
 
 const toast = useToast()
+const { showError, showSuccess } = useErrorHandler()
 const confirm = useConfirm()
 const { formatDate, formatCurrency, statusColor, downloadBlob } = useFormatting()
 const proposals = ref<any[]>([])
@@ -78,16 +80,16 @@ onMounted(async () => {
 
 async function createProposal() {
   saving.value = true
-  try { await proposalsApi.create(form.value); showCreate.value = false; form.value = { title: '', client_id: '', amount: 0, recipient_name: '', recipient_email: '', recipient_company: '', delivery_time: '', scope: '' }; toast.add({ severity: 'success', summary: 'Offerte aangemaakt', life: 3000 }) }
-  catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+  try { await proposalsApi.create(form.value); showCreate.value = false; form.value = { title: '', client_id: '', amount: 0, recipient_name: '', recipient_email: '', recipient_company: '', delivery_time: '', scope: '' }; showSuccess('Offerte aangemaakt') }
+  catch (err: any) { showError(err) }
   saving.value = false
 }
 async function downloadPdf(p: any) {
   try { const { data } = await proposalsApi.downloadPdf(p.id); downloadBlob(data, `offerte-${p.title}.pdf`) }
-  catch { toast.add({ severity: 'error', summary: 'PDF mislukt', life: 5000 }) }
+  catch (err: any) { showError(err, 'PDF genereren mislukt') }
 }
 function deleteProposal(p: any) {
   confirm.require({ message: `"${p.title}" verwijderen?`, header: 'Bevestiging', acceptLabel: 'Verwijderen', rejectLabel: 'Annuleren', acceptClass: 'p-button-danger',
-    accept: async () => { await proposalsApi.delete(p.id); proposals.value = proposals.value.filter(x => x.id !== p.id); toast.add({ severity: 'success', summary: 'Verwijderd', life: 3000 }) } })
+    accept: async () => { await proposalsApi.delete(p.id); proposals.value = proposals.value.filter(x => x.id !== p.id); showSuccess('Verwijderd') } })
 }
 </script>

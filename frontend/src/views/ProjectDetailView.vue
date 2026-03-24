@@ -258,6 +258,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { projectsApi, communicationApi, changeRequestsApi, notesApi, repositoriesApi, linksApi, invoicesApi } from '@/api/services'
 import { useFormatting } from '@/composables/useFormatting'
 import { useToast } from 'primevue/usetoast'
+import { useErrorHandler } from '@/composables/useErrorHandler'
 import Dialog from 'primevue/dialog'
 import Dropdown from 'primevue/dropdown'
 import Calendar from 'primevue/calendar'
@@ -266,6 +267,7 @@ import InputNumber from 'primevue/inputnumber'
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const { showError, showSuccess } = useErrorHandler()
 const { formatDate, formatDateTime, formatCurrency, statusColor, statusDot, downloadBlob } = useFormatting()
 
 const project = ref<any>(null)
@@ -327,7 +329,7 @@ onMounted(async () => {
     project.value = data
     editForm.value = { name: data.name, status: data.status, priority: data.priority, description: data.description }
     await loadAllTabs(id)
-  } catch { router.push('/projects') }
+  } catch (err: any) { showError(err, 'Project laden mislukt'); router.push('/projects') }
   loading.value = false
 })
 
@@ -354,8 +356,8 @@ async function addCommunication() {
     await communicationApi.create(project.value.id, { ...commForm.value, occurred_at: commForm.value.occurred_at.toISOString() })
     showCommDialog.value = false; commForm.value = { type: 'EMAIL', subject: '', content: '', occurred_at: new Date() }
     const { data } = await communicationApi.list(project.value.id); communications.value = data
-    toast.add({ severity: 'success', summary: 'Toegevoegd', life: 3000 })
-  } catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+    showSuccess('Toegevoegd')
+  } catch (err: any) { showError(err) }
   saving.value = false
 }
 
@@ -365,8 +367,8 @@ async function addChangeRequest() {
     await changeRequestsApi.create(project.value.id, crForm.value)
     showCRDialog.value = false; crForm.value = { title: '', description: '', source_type: 'INTERNAL', impact: 'MEDIUM' }
     const { data } = await changeRequestsApi.list(project.value.id); changeRequests.value = data
-    toast.add({ severity: 'success', summary: 'Aangemaakt', life: 3000 })
-  } catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+    showSuccess('Aangemaakt')
+  } catch (err: any) { showError(err) }
   saving.value = false
 }
 
@@ -386,7 +388,7 @@ async function addRepo() {
     await repositoriesApi.create(project.value.id, repoForm.value)
     showRepoDialog.value = false; repoForm.value = { repo_name: '', repo_url: '', default_branch: 'main' }
     const { data } = await repositoriesApi.list(project.value.id); repositories.value = data
-  } catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+  } catch (err: any) { showError(err) }
   saving.value = false
 }
 async function deleteRepo(id: string) { await repositoriesApi.delete(id); repositories.value = repositories.value.filter(r => r.id !== id) }
@@ -397,7 +399,7 @@ async function addLink() {
     await linksApi.create(project.value.id, linkForm.value)
     showLinkDialog.value = false; linkForm.value = { label: '', url: '', description: '' }
     const { data } = await linksApi.list(project.value.id); links.value = data
-  } catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+  } catch (err: any) { showError(err) }
   saving.value = false
 }
 async function deleteLink(id: string) { await linksApi.delete(id); links.value = links.value.filter(l => l.id !== id) }
@@ -407,14 +409,14 @@ async function updateProject() {
   try {
     const { data } = await projectsApi.update(project.value.id, editForm.value)
     Object.assign(project.value, data); showEditDialog.value = false
-    toast.add({ severity: 'success', summary: 'Bijgewerkt', life: 3000 })
-  } catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+    showSuccess('Bijgewerkt')
+  } catch (err: any) { showError(err) }
   saving.value = false
 }
 
 async function downloadInvoicePdf(inv: any) {
   try { const { data } = await invoicesApi.downloadPdf(inv.id); downloadBlob(data, `factuur-${inv.invoice_number}.pdf`) }
-  catch { toast.add({ severity: 'error', summary: 'PDF mislukt', life: 5000 }) }
+  catch (err: any) { showError(err, 'PDF genereren mislukt') }
 }
 
 function openInvoiceDialog() {
@@ -442,8 +444,8 @@ async function createInvoice() {
     showInvoiceDialog.value = false
     const { data } = await invoicesApi.list({ project_id: project.value.id })
     invoices.value = data
-    toast.add({ severity: 'success', summary: 'Factuur aangemaakt', life: 3000 })
-  } catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+    showSuccess('Factuur aangemaakt')
+  } catch (err: any) { showError(err) }
   saving.value = false
 }
 
@@ -452,15 +454,15 @@ async function markInvoicePaid(inv: any) {
     await invoicesApi.markPaid(inv.id)
     const { data } = await invoicesApi.list({ project_id: project.value.id })
     invoices.value = data
-    toast.add({ severity: 'success', summary: 'Factuur betaald', life: 3000 })
-  } catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+    showSuccess('Factuur betaald')
+  } catch (err: any) { showError(err) }
 }
 
 async function deleteInvoice(inv: any) {
   try {
     await invoicesApi.delete(inv.id)
     invoices.value = invoices.value.filter(i => i.id !== inv.id)
-    toast.add({ severity: 'success', summary: 'Factuur verwijderd', life: 3000 })
-  } catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+    showSuccess('Factuur verwijderd')
+  } catch (err: any) { showError(err) }
 }
 </script>

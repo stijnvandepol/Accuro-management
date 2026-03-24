@@ -38,10 +38,12 @@ import { ref, onMounted } from 'vue'
 import { financeApi } from '@/api/services'
 import { useFormatting } from '@/composables/useFormatting'
 import { useToast } from 'primevue/usetoast'
+import { useErrorHandler } from '@/composables/useErrorHandler'
 import InputNumber from 'primevue/inputnumber'
 import Dropdown from 'primevue/dropdown'
 
 const toast = useToast()
+const { showError, showSuccess } = useErrorHandler()
 const { formatCurrency, downloadBlob } = useFormatting()
 const overview = ref<any>(null)
 const loading = ref(true)
@@ -52,7 +54,7 @@ const monthOptions = [{label:'Jan',value:1},{label:'Feb',value:2},{label:'Mrt',v
 
 onMounted(async () => { try { const { data } = await financeApi.overview(); overview.value = data } catch {}; loading.value = false })
 
-async function downloadMonthly() { try { const { data } = await financeApi.monthlyReport(reportYear.value, reportMonth.value, 'pdf'); downloadBlob(data, `rapport-${reportYear.value}-${String(reportMonth.value).padStart(2,'0')}.pdf`) } catch { toast.add({ severity: 'error', summary: 'Mislukt', life: 5000 }) } }
-async function downloadYearly() { try { const { data } = await financeApi.yearlyReport(reportYear.value, 'pdf'); downloadBlob(data, `jaarrapport-${reportYear.value}.pdf`) } catch { toast.add({ severity: 'error', summary: 'Mislukt', life: 5000 }) } }
-async function downloadYearlyCsv() { try { const { data } = await financeApi.yearlyReport(reportYear.value, 'csv'); downloadBlob(new Blob([data], { type: 'text/csv' }), `jaarrapport-${reportYear.value}.csv`) } catch { toast.add({ severity: 'error', summary: 'Mislukt', life: 5000 }) } }
+async function downloadMonthly() { try { const { data } = await financeApi.monthlyReport(reportYear.value, reportMonth.value, 'pdf'); downloadBlob(data, `rapport-${reportYear.value}-${String(reportMonth.value).padStart(2,'0')}.pdf`) } catch (err: any) { showError(err, 'Downloaden mislukt') } }
+async function downloadYearly() { try { const { data } = await financeApi.yearlyReport(reportYear.value, 'pdf'); downloadBlob(data, `jaarrapport-${reportYear.value}.pdf`) } catch (err: any) { showError(err, 'Downloaden mislukt') } }
+async function downloadYearlyCsv() { try { const { data } = await financeApi.yearlyReport(reportYear.value, 'csv'); downloadBlob(new Blob([data], { type: 'text/csv' }), `jaarrapport-${reportYear.value}.csv`) } catch (err: any) { showError(err, 'Downloaden mislukt') } }
 </script>

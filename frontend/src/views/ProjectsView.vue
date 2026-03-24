@@ -65,12 +65,14 @@ import { ref, onMounted } from 'vue'
 import { projectsApi, clientsApi } from '@/api/services'
 import { useFormatting } from '@/composables/useFormatting'
 import { useToast } from 'primevue/usetoast'
+import { useErrorHandler } from '@/composables/useErrorHandler'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Dialog from 'primevue/dialog'
 import Dropdown from 'primevue/dropdown'
 
 const toast = useToast()
+const { showError, showSuccess } = useErrorHandler()
 const { formatDate, statusColor, statusDot } = useFormatting()
 const projects = ref<any[]>([])
 const clientOptions = ref<any[]>([])
@@ -112,8 +114,8 @@ async function createProject() {
   try {
     await projectsApi.create(form.value); showCreate.value = false
     form.value = { name: '', client_id: '', project_type: 'NEW_WEBSITE', priority: 'MEDIUM', status: 'LEAD', description: '' }
-    toast.add({ severity: 'success', summary: 'Project aangemaakt', life: 3000 }); await loadProjects()
-  } catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+    showSuccess('Project aangemaakt'); await loadProjects()
+  } catch (err: any) { showError(err) }
   saving.value = false
 }
 </script>

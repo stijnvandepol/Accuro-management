@@ -68,6 +68,7 @@ import { ref, onMounted } from 'vue'
 import { invoicesApi, clientsApi } from '@/api/services'
 import { useFormatting } from '@/composables/useFormatting'
 import { useToast } from 'primevue/usetoast'
+import { useErrorHandler } from '@/composables/useErrorHandler'
 import { useConfirm } from 'primevue/useconfirm'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -77,6 +78,7 @@ import Calendar from 'primevue/calendar'
 import InputNumber from 'primevue/inputnumber'
 
 const toast = useToast()
+const { showError, showSuccess } = useErrorHandler()
 const confirm = useConfirm()
 const { formatDate, formatCurrency, statusColor, downloadBlob } = useFormatting()
 
@@ -105,20 +107,20 @@ async function loadInvoices() {
 function fmtDate(d: Date): string { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` }
 async function createInvoice() {
   saving.value = true
-  try { await invoicesApi.create({ ...form.value, issue_date: fmtDate(form.value.issue_date), due_date: fmtDate(form.value.due_date) }); showCreate.value = false; toast.add({ severity: 'success', summary: 'Factuur aangemaakt', life: 3000 }); await loadInvoices() }
-  catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+  try { await invoicesApi.create({ ...form.value, issue_date: fmtDate(form.value.issue_date), due_date: fmtDate(form.value.due_date) }); showCreate.value = false; showSuccess('Factuur aangemaakt'); await loadInvoices() }
+  catch (err: any) { showError(err) }
   saving.value = false
 }
 async function markPaid(inv: any) {
-  try { await invoicesApi.markPaid(inv.id); toast.add({ severity: 'success', summary: 'Betaald', life: 3000 }); await loadInvoices() }
-  catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+  try { await invoicesApi.markPaid(inv.id); showSuccess('Betaald'); await loadInvoices() }
+  catch (err: any) { showError(err) }
 }
 async function downloadPdf(inv: any) {
   try { const { data } = await invoicesApi.downloadPdf(inv.id); downloadBlob(data, `factuur-${inv.invoice_number}.pdf`) }
-  catch { toast.add({ severity: 'error', summary: 'PDF mislukt', life: 5000 }) }
+  catch (err: any) { showError(err, 'PDF genereren mislukt') }
 }
 function deleteInvoice(inv: any) {
   confirm.require({ message: `Factuur ${inv.invoice_number} verwijderen?`, header: 'Bevestiging', acceptLabel: 'Verwijderen', rejectLabel: 'Annuleren', acceptClass: 'p-button-danger',
-    accept: async () => { await invoicesApi.delete(inv.id); toast.add({ severity: 'success', summary: 'Verwijderd', life: 3000 }); await loadInvoices() } })
+    accept: async () => { await invoicesApi.delete(inv.id); showSuccess('Verwijderd'); await loadInvoices() } })
 }
 </script>

@@ -69,6 +69,7 @@ import { useAuthStore } from '@/stores/auth'
 import { clientsApi } from '@/api/services'
 import { useFormatting } from '@/composables/useFormatting'
 import { useToast } from 'primevue/usetoast'
+import { useErrorHandler } from '@/composables/useErrorHandler'
 import { useConfirm } from 'primevue/useconfirm'
 import Dialog from 'primevue/dialog'
 
@@ -76,6 +77,7 @@ const auth = useAuthStore()
 const route = useRoute()
 const router = useRouter()
 const toast = useToast()
+const { showError, showSuccess } = useErrorHandler()
 const confirm = useConfirm()
 const { statusColor, statusDot } = useFormatting()
 
@@ -87,7 +89,7 @@ const editForm = ref<any>({})
 
 onMounted(async () => {
   try { const { data } = await clientsApi.get(route.params.id as string); client.value = data }
-  catch { router.push('/clients') }
+  catch (err: any) { showError(err, 'Klant laden mislukt'); router.push('/clients') }
   loading.value = false
 })
 
@@ -101,8 +103,8 @@ async function updateClient() {
   try {
     const { data } = await clientsApi.update(client.value.id, editForm.value)
     Object.assign(client.value, data); showEdit.value = false
-    toast.add({ severity: 'success', summary: 'Klant bijgewerkt', life: 3000 })
-  } catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+    showSuccess('Klant bijgewerkt')
+  } catch (err: any) { showError(err) }
   saving.value = false
 }
 
@@ -111,8 +113,8 @@ function deleteClient() {
     message: 'Weet je zeker dat je deze klant wilt verwijderen?', header: 'Bevestiging',
     acceptLabel: 'Verwijderen', rejectLabel: 'Annuleren', acceptClass: 'p-button-danger',
     accept: async () => {
-      try { await clientsApi.delete(client.value.id); toast.add({ severity: 'success', summary: 'Verwijderd', life: 3000 }); router.push('/clients') }
-      catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+      try { await clientsApi.delete(client.value.id); showSuccess('Verwijderd'); router.push('/clients') }
+      catch (err: any) { showError(err) }
     },
   })
 }

@@ -72,12 +72,14 @@ import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { clientsApi } from '@/api/services'
 import { useToast } from 'primevue/usetoast'
+import { useErrorHandler } from '@/composables/useErrorHandler'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
 import Dialog from 'primevue/dialog'
 
 const auth = useAuthStore()
 const toast = useToast()
+const { showError, showSuccess } = useErrorHandler()
 const clients = ref<any[]>([])
 const loading = ref(true)
 const showCreate = ref(false)
@@ -89,7 +91,7 @@ onMounted(loadClients)
 async function loadClients() {
   loading.value = true
   try { const { data } = await clientsApi.list(); clients.value = data }
-  catch { toast.add({ severity: 'error', summary: 'Fout', detail: 'Kon klanten niet laden', life: 3000 }) }
+  catch (err: any) { showError(err, 'Klanten laden mislukt') }
   loading.value = false
 }
 
@@ -99,9 +101,9 @@ async function createClient() {
     await clientsApi.create(form.value)
     showCreate.value = false
     form.value = { company_name: '', contact_name: '', email: '', phone: '', address: '' }
-    toast.add({ severity: 'success', summary: 'Klant aangemaakt', life: 3000 })
+    showSuccess('Klant aangemaakt')
     await loadClients()
-  } catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail || 'Mislukt', life: 5000 }) }
+  } catch (err: any) { showError(err) }
   saving.value = false
 }
 </script>

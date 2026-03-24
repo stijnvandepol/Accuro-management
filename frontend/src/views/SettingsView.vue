@@ -64,6 +64,7 @@ import { ref, onMounted } from 'vue'
 import { useAuthStore } from '@/stores/auth'
 import { settingsApi, usersApi, exportApi } from '@/api/services'
 import { useToast } from 'primevue/usetoast'
+import { useErrorHandler } from '@/composables/useErrorHandler'
 import { useConfirm } from 'primevue/useconfirm'
 import DataTable from 'primevue/datatable'
 import Column from 'primevue/column'
@@ -73,6 +74,7 @@ import InputNumber from 'primevue/inputnumber'
 
 const auth = useAuthStore()
 const toast = useToast()
+const { showError, showSuccess } = useErrorHandler()
 const confirm = useConfirm()
 const settings = ref<any>({ company_name: '', email: '', phone: '', website_url: '', address: '', kvk_number: '', vat_number: '', iban: '', bank_name: '', default_vat_rate: 21, payment_term_days: 30, default_quote_valid_days: 30, default_price_label: 'Projectprijs' })
 const users = ref<any[]>([])
@@ -88,19 +90,19 @@ onMounted(async () => {
   try { const { data } = await usersApi.list(); users.value = data } catch {}
 })
 
-async function saveSettings() { savingSettings.value = true; try { await settingsApi.update(settings.value); toast.add({ severity: 'success', summary: 'Opgeslagen', life: 3000 }) } catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }; savingSettings.value = false }
+async function saveSettings() { savingSettings.value = true; try { await settingsApi.update(settings.value); showSuccess('Opgeslagen') } catch (err: any) { showError(err) }; savingSettings.value = false }
 
 async function createUser() {
   savingUser.value = true
-  try { await usersApi.create(userForm.value); showUserDialog.value = false; userForm.value = { name: '', email: '', password: '', role: 'EMPLOYEE' }; toast.add({ severity: 'success', summary: 'Aangemaakt', life: 3000 }); const { data } = await usersApi.list(); users.value = data }
-  catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+  try { await usersApi.create(userForm.value); showUserDialog.value = false; userForm.value = { name: '', email: '', password: '', role: 'EMPLOYEE' }; showSuccess('Aangemaakt'); const { data } = await usersApi.list(); users.value = data }
+  catch (err: any) { showError(err) }
   savingUser.value = false
 }
 
-function deleteUser(user: any) { confirm.require({ message: `${user.name} deactiveren?`, header: 'Bevestiging', acceptLabel: 'Deactiveren', rejectLabel: 'Annuleren', acceptClass: 'p-button-danger', accept: async () => { await usersApi.delete(user.id); const { data } = await usersApi.list(); users.value = data; toast.add({ severity: 'success', summary: 'Gedeactiveerd', life: 3000 }) } }) }
+function deleteUser(user: any) { confirm.require({ message: `${user.name} deactiveren?`, header: 'Bevestiging', acceptLabel: 'Deactiveren', rejectLabel: 'Annuleren', acceptClass: 'p-button-danger', accept: async () => { await usersApi.delete(user.id); const { data } = await usersApi.list(); users.value = data; showSuccess('Gedeactiveerd') } }) }
 
 async function exportDatabase() {
-  try { const { data } = await exportApi.database(exportPassword.value); const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `export-${new Date().toISOString().split('T')[0]}.json`; a.click(); window.URL.revokeObjectURL(url); exportPassword.value = ''; toast.add({ severity: 'success', summary: 'Gedownload', life: 3000 }) }
-  catch (err: any) { toast.add({ severity: 'error', summary: 'Mislukt', detail: err.response?.data?.detail, life: 5000 }) }
+  try { const { data } = await exportApi.database(exportPassword.value); const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `export-${new Date().toISOString().split('T')[0]}.json`; a.click(); window.URL.revokeObjectURL(url); exportPassword.value = ''; showSuccess('Gedownload') }
+  catch (err: any) { showError(err, 'Export mislukt') }
 }
 </script>
