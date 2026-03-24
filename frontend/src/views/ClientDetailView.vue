@@ -1,0 +1,119 @@
+<template>
+  <div v-if="loading" class="space-y-6">
+    <div class="flex items-center gap-4"><div class="skeleton h-5 w-5 rounded"></div><div class="skeleton h-6 w-48"></div></div>
+    <div class="grid grid-cols-3 gap-4"><div v-for="i in 3" :key="i" class="card p-5"><div class="skeleton h-4 w-20 mb-3"></div><div class="skeleton h-4 w-full"></div></div></div>
+  </div>
+
+  <div v-else-if="client" class="space-y-6 animate-slide-up">
+    <div class="flex items-center gap-4">
+      <button @click="$router.push('/clients')" class="btn-icon"><i class="pi pi-arrow-left text-sm"></i></button>
+      <div class="flex-1">
+        <h2 class="text-lg font-semibold text-zinc-100">{{ client.company_name }}</h2>
+        <p class="text-xs font-mono text-zinc-500">{{ client.contact_name }} · {{ client.email }}</p>
+      </div>
+      <button v-if="auth.hasRole('ADMIN','EMPLOYEE')" class="btn-secondary" @click="openEdit"><i class="pi pi-pencil text-xs"></i> Bewerken</button>
+      <button v-if="auth.isAdmin" class="btn-danger" @click="deleteClient"><i class="pi pi-trash text-xs"></i></button>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div class="card p-5">
+        <h3 class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3">Contact</h3>
+        <div class="space-y-2 text-sm">
+          <div class="flex justify-between"><span class="text-zinc-500">Telefoon</span><span class="font-mono text-xs text-zinc-300">{{ client.phone || '—' }}</span></div>
+          <div class="flex justify-between"><span class="text-zinc-500">Adres</span><span class="text-zinc-300 text-right text-xs">{{ client.address || '—' }}</span></div>
+        </div>
+      </div>
+      <div class="card p-5">
+        <h3 class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3">Projecten <span class="text-zinc-600">({{ client.projects?.length || 0 }})</span></h3>
+        <div class="space-y-2">
+          <router-link v-for="p in client.projects" :key="p.id" :to="`/projects/${p.id}`"
+            class="flex items-center gap-2 text-sm text-zinc-300 hover:text-green-400 transition-colors">
+            <div class="w-1.5 h-1.5 rounded-full shrink-0" :class="statusDot(p.status)"></div>
+            <span class="truncate">{{ p.name }}</span>
+          </router-link>
+          <p v-if="!client.projects?.length" class="text-xs text-zinc-600">Geen projecten</p>
+        </div>
+      </div>
+      <div class="card p-5">
+        <h3 class="text-[10px] font-mono text-zinc-500 uppercase tracking-widest mb-3">Facturen <span class="text-zinc-600">({{ client.invoices?.length || 0 }})</span></h3>
+        <div class="space-y-2">
+          <div v-for="inv in client.invoices" :key="inv.id" class="flex items-center justify-between text-sm">
+            <span class="font-mono text-xs text-zinc-400">{{ inv.invoice_number }}</span>
+            <span :class="statusColor(inv.status)" class="badge text-[10px]">{{ inv.status }}</span>
+          </div>
+          <p v-if="!client.invoices?.length" class="text-xs text-zinc-600">Geen facturen</p>
+        </div>
+      </div>
+    </div>
+
+    <Dialog v-model:visible="showEdit" header="Klant bewerken" modal :style="{ width: '480px' }">
+      <form @submit.prevent="updateClient" class="space-y-4">
+        <div><label class="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Bedrijfsnaam</label><input v-model="editForm.company_name" class="input" /></div>
+        <div><label class="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Contactpersoon</label><input v-model="editForm.contact_name" class="input" /></div>
+        <div><label class="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">E-mailadres</label><input v-model="editForm.email" type="email" class="input" /></div>
+        <div><label class="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Telefoon</label><input v-model="editForm.phone" class="input" /></div>
+        <div><label class="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Adres</label><textarea v-model="editForm.address" class="input min-h-[60px]" /></div>
+        <div class="flex justify-end gap-2 pt-3 border-t border-zinc-800">
+          <button type="button" class="btn-secondary" @click="showEdit = false">Annuleren</button>
+          <button type="submit" class="btn-primary" :disabled="saving">Opslaan</button>
+        </div>
+      </form>
+    </Dialog>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref, onMounted } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
+import { useAuthStore } from '@/stores/auth'
+import { clientsApi } from '@/api/services'
+import { useFormatting } from '@/composables/useFormatting'
+import { useToast } from 'primevue/usetoast'
+import { useConfirm } from 'primevue/useconfirm'
+import Dialog from 'primevue/dialog'
+
+const auth = useAuthStore()
+const route = useRoute()
+const router = useRouter()
+const toast = useToast()
+const confirm = useConfirm()
+const { statusColor, statusDot } = useFormatting()
+
+const client = ref<any>(null)
+const loading = ref(true)
+const showEdit = ref(false)
+const saving = ref(false)
+const editForm = ref<any>({})
+
+onMounted(async () => {
+  try { const { data } = await clientsApi.get(route.params.id as string); client.value = data }
+  catch { router.push('/clients') }
+  loading.value = false
+})
+
+function openEdit() {
+  editForm.value = { company_name: client.value.company_name, contact_name: client.value.contact_name, email: client.value.email, phone: client.value.phone, address: client.value.address }
+  showEdit.value = true
+}
+
+async function updateClient() {
+  saving.value = true
+  try {
+    const { data } = await clientsApi.update(client.value.id, editForm.value)
+    Object.assign(client.value, data); showEdit.value = false
+    toast.add({ severity: 'success', summary: 'Klant bijgewerkt', life: 3000 })
+  } catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+  saving.value = false
+}
+
+function deleteClient() {
+  confirm.require({
+    message: 'Weet je zeker dat je deze klant wilt verwijderen?', header: 'Bevestiging',
+    acceptLabel: 'Verwijderen', rejectLabel: 'Annuleren', acceptClass: 'p-button-danger',
+    accept: async () => {
+      try { await clientsApi.delete(client.value.id); toast.add({ severity: 'success', summary: 'Verwijderd', life: 3000 }); router.push('/clients') }
+      catch (err: any) { toast.add({ severity: 'error', summary: 'Fout', detail: err.response?.data?.detail, life: 5000 }) }
+    },
+  })
+}
+</script>

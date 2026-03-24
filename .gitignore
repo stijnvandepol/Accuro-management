@@ -41,3 +41,21 @@ uploads/
 # Prisma generated
 apps/web/node_modules/
 packages/db/node_modules/
+
+# Claude Code
+.claude/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# Alembic
+backend/alembic/versions/*.py
+!backend/alembic/versions/.gitkeep
+
+# Old files
+*.old

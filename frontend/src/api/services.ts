@@ -1,0 +1,125 @@
+import api from './client'
+
+// Auth
+export const authApi = {
+  login: (email: string, password: string) =>
+    api.post('/auth/login', { email, password }),
+  refresh: (refreshToken: string) =>
+    api.post('/auth/refresh', { refresh_token: refreshToken }),
+  logout: () => api.post('/auth/logout'),
+  me: () => api.get('/auth/me'),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.put('/auth/me/password', { current_password: currentPassword, new_password: newPassword }),
+}
+
+// Users
+export const usersApi = {
+  list: () => api.get('/users'),
+  get: (id: string) => api.get(`/users/${id}`),
+  create: (data: any) => api.post('/users', data),
+  update: (id: string, data: any) => api.patch(`/users/${id}`, data),
+  delete: (id: string) => api.delete(`/users/${id}`),
+}
+
+// Clients
+export const clientsApi = {
+  list: () => api.get('/clients'),
+  get: (id: string) => api.get(`/clients/${id}`),
+  create: (data: any) => api.post('/clients', data),
+  update: (id: string, data: any) => api.patch(`/clients/${id}`, data),
+  delete: (id: string) => api.delete(`/clients/${id}`),
+}
+
+// Projects
+export const projectsApi = {
+  list: (params?: any) => api.get('/projects', { params }),
+  get: (id: string) => api.get(`/projects/${id}`),
+  getBySlug: (slug: string) => api.get(`/projects/by-slug/${slug}`),
+  create: (data: any) => api.post('/projects', data),
+  update: (id: string, data: any) => api.patch(`/projects/${id}`, data),
+  delete: (id: string) => api.delete(`/projects/${id}`),
+}
+
+// Communication
+export const communicationApi = {
+  list: (projectId: string) => api.get(`/projects/${projectId}/communications`),
+  create: (projectId: string, data: any) => api.post(`/projects/${projectId}/communications`, data),
+  delete: (id: string) => api.delete(`/communications/${id}`),
+}
+
+// Change Requests
+export const changeRequestsApi = {
+  list: (projectId: string) => api.get(`/projects/${projectId}/change-requests`),
+  get: (id: string) => api.get(`/change-requests/${id}`),
+  create: (projectId: string, data: any) => api.post(`/projects/${projectId}/change-requests`, data),
+  update: (id: string, data: any) => api.patch(`/change-requests/${id}`, data),
+  reopen: (id: string) => api.post(`/change-requests/${id}/reopen`),
+  close: (id: string) => api.post(`/change-requests/${id}/close`),
+}
+
+// Notes
+export const notesApi = {
+  list: (projectId: string) => api.get(`/projects/${projectId}/notes`),
+  create: (projectId: string, data: any) => api.post(`/projects/${projectId}/notes`, data),
+  delete: (id: string) => api.delete(`/notes/${id}`),
+}
+
+// Invoices
+export const invoicesApi = {
+  list: (params?: any) => api.get('/invoices', { params }),
+  get: (id: string) => api.get(`/invoices/${id}`),
+  create: (data: any) => api.post('/invoices', data),
+  update: (id: string, data: any) => api.patch(`/invoices/${id}`, data),
+  delete: (id: string) => api.delete(`/invoices/${id}`),
+  markPaid: (id: string) => api.post(`/invoices/${id}/mark-paid`),
+  downloadPdf: (id: string) => api.get(`/invoices/${id}/pdf`, { responseType: 'blob' }),
+}
+
+// Proposals
+export const proposalsApi = {
+  listByProject: (projectId: string) => api.get(`/proposals/by-project/${projectId}`),
+  get: (id: string) => api.get(`/proposals/${id}`),
+  create: (data: any) => api.post('/proposals', data),
+  update: (id: string, data: any) => api.patch(`/proposals/${id}`, data),
+  delete: (id: string) => api.delete(`/proposals/${id}`),
+  downloadPdf: (id: string) => api.get(`/proposals/${id}/pdf`, { responseType: 'blob' }),
+}
+
+// Repositories
+export const repositoriesApi = {
+  list: (projectId: string) => api.get(`/projects/${projectId}/repositories`),
+  create: (projectId: string, data: any) => api.post(`/projects/${projectId}/repositories`, data),
+  delete: (id: string) => api.delete(`/repositories/${id}`),
+}
+
+// Links
+export const linksApi = {
+  list: (projectId: string) => api.get(`/projects/${projectId}/links`),
+  create: (projectId: string, data: any) => api.post(`/projects/${projectId}/links`, data),
+  delete: (id: string) => api.delete(`/links/${id}`),
+}
+
+// Finance
+export const financeApi = {
+  overview: () => api.get('/finance/overview'),
+  monthlyReport: (year: number, month: number, format = 'json') =>
+    api.get('/finance/reports/monthly', { params: { year, month, format }, responseType: format === 'pdf' ? 'blob' : 'json' }),
+  yearlyReport: (year: number, format = 'json', includeUnpaid = false) =>
+    api.get('/finance/reports/yearly', { params: { year, format, include_unpaid: includeUnpaid }, responseType: format === 'pdf' ? 'blob' : 'json' }),
+}
+
+// Dashboard
+export const dashboardApi = {
+  stats: () => api.get('/dashboard/stats'),
+}
+
+// Settings
+export const settingsApi = {
+  get: () => api.get('/settings'),
+  update: (data: any) => api.put('/settings', data),
+}
+
+// Export
+export const exportApi = {
+  database: (password: string) => api.post('/export/database', { password }),
+}
