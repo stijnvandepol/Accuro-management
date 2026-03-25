@@ -13,9 +13,10 @@ from app.core.dependencies import require_role
 from app.core.rbac import Role
 from app.services.pdf_service import generate_report_pdf
 from app.models.invoice import Invoice, InvoiceStatus
+from app.models.expense import Expense
 from app.models.client import Client
 from app.models.business_settings import BusinessSettings
-from app.schemas.finance import FinanceOverview, VatBreakdown, MonthlyReport, YearlyReport
+from app.schemas.finance import FinanceOverview, VatBreakdown, QuarterVatSummary, MonthlyReport, YearlyReport
 
 router = APIRouter(prefix="/api/v1/finance", tags=["finance"])
 
@@ -46,12 +47,20 @@ async def get_finance_overview(
     )
     overdue_amount = overdue.scalar() or Decimal("0")
 
+    # Total expenses (excl VAT)
+    expenses_result = await db.execute(
+        select(func.coalesce(func.sum(Expense.amount_excl_vat), 0))
+    )
+    total_expenses = expenses_result.scalar() or Decimal("0")
+
     # VAT by quarter for current year
     year = date.today().year
-    vat_by_quarter: dict[str, list[VatBreakdown]] = {}
+    vat_by_quarter: dict[str, QuarterVatSummary] = {}
     for quarter in range(1, 5):
         start_month = (quarter - 1) * 3 + 1
         end_month = quarter * 3
+
+        # Received VAT (from paid invoices)
         result = await db.execute(
             select(
                 Invoice.vat_rate,
@@ -68,7 +77,7 @@ async def get_finance_overview(
             .group_by(Invoice.vat_rate)
         )
         rows = result.all()
-        vat_by_quarter[f"Q{quarter}"] = [
+        breakdown = [
             VatBreakdown(
                 vat_rate=row.vat_rate,
                 subtotal=row.subtotal or Decimal("0"),
@@ -77,11 +86,32 @@ async def get_finance_overview(
             )
             for row in rows
         ]
+        received_vat = sum(b.vat_amount for b in breakdown)
+
+        # Paid VAT (from expenses)
+        expense_vat_result = await db.execute(
+            select(func.coalesce(func.sum(Expense.vat_amount), 0))
+            .where(
+                extract("year", Expense.date) == year,
+                extract("month", Expense.date) >= start_month,
+                extract("month", Expense.date) <= end_month,
+            )
+        )
+        paid_vat = expense_vat_result.scalar() or Decimal("0")
+
+        vat_by_quarter[f"Q{quarter}"] = QuarterVatSummary(
+            received_vat=received_vat,
+            paid_vat=paid_vat,
+            vat_due=received_vat - paid_vat,
+            breakdown=breakdown,
+        )
 
     return FinanceOverview(
         total_revenue=total_revenue,
         open_amount=open_amount,
         overdue_amount=overdue_amount,
+        total_expenses=total_expenses,
+        profit=total_revenue - total_expenses,
         vat_by_quarter=vat_by_quarter,
     )
 

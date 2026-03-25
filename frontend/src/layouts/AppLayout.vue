@@ -100,8 +100,10 @@ const menuItems = [
   { to: '/', label: 'Dashboard', icon: 'pi pi-objects-column', roles: ['ADMIN', 'EMPLOYEE'] },
   { to: '/clients', label: 'Klanten', icon: 'pi pi-building', roles: ['ADMIN', 'EMPLOYEE', 'FINANCE'] },
   { to: '/projects', label: 'Projecten', icon: 'pi pi-folder', roles: ['ADMIN', 'EMPLOYEE'] },
+  { to: '/time-entries', label: 'Uren', icon: 'pi pi-stopwatch', roles: ['ADMIN', 'EMPLOYEE'] },
   { to: '/invoices', label: 'Facturen', icon: 'pi pi-receipt', roles: ['ADMIN', 'FINANCE'] },
   { to: '/proposals', label: 'Offertes', icon: 'pi pi-file-edit', roles: ['ADMIN', 'EMPLOYEE'] },
+  { to: '/expenses', label: 'Uitgaven', icon: 'pi pi-shopping-cart', roles: ['ADMIN', 'FINANCE'] },
   { to: '/finance', label: 'Financieel', icon: 'pi pi-chart-line', roles: ['ADMIN', 'FINANCE'] },
   { to: '/settings', label: 'Instellingen', icon: 'pi pi-sliders-h', roles: ['ADMIN'] },
 ]

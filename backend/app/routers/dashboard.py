@@ -1,8 +1,8 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func
+from sqlalchemy import select, func, extract
 from decimal import Decimal
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, date, timedelta, timezone
 
 from app.database import get_db
 from app.core.dependencies import require_role
@@ -11,6 +11,7 @@ from app.models.project import ProjectWorkspace, ProjectStatus
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.audit_log import AuditLog
 from app.models.repository import ProjectRepository
+from app.models.time_entry import TimeEntry
 from app.schemas.dashboard import DashboardStats
 
 router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
@@ -78,6 +79,14 @@ async def get_dashboard_stats(
     )
     projects_without_repos = without_repos.scalar() or 0
 
+    # Hours this year
+    current_year = date.today().year
+    hours_result = await db.execute(
+        select(func.coalesce(func.sum(TimeEntry.hours), 0))
+        .where(extract("year", TimeEntry.date) == current_year)
+    )
+    hours_this_year = hours_result.scalar() or Decimal("0")
+
     return DashboardStats(
         projects_in_progress=projects_in_progress,
         projects_waiting_for_client=projects_waiting,
@@ -85,4 +94,5 @@ async def get_dashboard_stats(
         overdue_amount=overdue_amount,
         recent_activity=recent_activity,
         projects_without_repos=projects_without_repos,
+        hours_this_year=hours_this_year,
     )

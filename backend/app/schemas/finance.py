@@ -9,11 +9,20 @@ class VatBreakdown(BaseModel):
     total: Decimal
 
 
+class QuarterVatSummary(BaseModel):
+    received_vat: Decimal  # BTW ontvangen van klanten
+    paid_vat: Decimal  # BTW betaald op inkopen
+    vat_due: Decimal  # Af te dragen = received - paid
+    breakdown: list[VatBreakdown]
+
+
 class FinanceOverview(BaseModel):
     total_revenue: Decimal
     open_amount: Decimal
     overdue_amount: Decimal
-    vat_by_quarter: dict[str, list[VatBreakdown]]
+    total_expenses: Decimal
+    profit: Decimal  # revenue - expenses (excl vat)
+    vat_by_quarter: dict[str, QuarterVatSummary]
 
 
 class MonthlyReport(BaseModel):

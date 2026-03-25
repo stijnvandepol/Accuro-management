@@ -99,6 +99,23 @@ export const linksApi = {
   delete: (id: string) => api.delete(`/links/${id}`),
 }
 
+// Time Entries
+export const timeEntriesApi = {
+  list: (params?: any) => api.get('/time-entries', { params }),
+  create: (data: any) => api.post('/time-entries', data),
+  update: (id: string, data: any) => api.put(`/time-entries/${id}`, data),
+  delete: (id: string) => api.delete(`/time-entries/${id}`),
+  summary: (year?: number) => api.get('/time-entries/summary', { params: year ? { year } : {} }),
+}
+
+// Expenses
+export const expensesApi = {
+  list: (params?: any) => api.get('/expenses', { params }),
+  create: (data: any) => api.post('/expenses', data),
+  update: (id: string, data: any) => api.put(`/expenses/${id}`, data),
+  delete: (id: string) => api.delete(`/expenses/${id}`),
+}
+
 // Finance
 export const financeApi = {
   overview: () => api.get('/finance/overview'),
