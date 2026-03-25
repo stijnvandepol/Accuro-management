@@ -42,14 +42,17 @@
       <div class="flex justify-end"><button class="btn-secondary text-xs" @click="showCommDialog = true"><i class="pi pi-plus text-xs"></i> Toevoegen</button></div>
       <div v-for="entry in communications" :key="entry.id" class="card p-4">
         <div class="flex items-start justify-between">
-          <div>
+          <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2">
               <span :class="statusColor(entry.type)" class="badge text-[10px]">{{ entry.type }}</span>
               <span class="text-sm font-medium text-gray-800">{{ entry.subject }}</span>
             </div>
             <p class="text-sm text-gray-500 mt-2 whitespace-pre-wrap">{{ entry.content }}</p>
           </div>
-          <span class="text-[11px] font-mono text-gray-400 shrink-0">{{ formatDateTime(entry.occurred_at) }}</span>
+          <div class="flex items-center gap-2 shrink-0 ml-4">
+            <span class="text-[11px] font-mono text-gray-400">{{ formatDateTime(entry.occurred_at) }}</span>
+            <button class="btn-icon text-red-600" @click="deleteCommunication(entry.id)"><i class="pi pi-trash text-xs"></i></button>
+          </div>
         </div>
       </div>
       <p v-if="!communications.length" class="text-center text-sm text-gray-400 py-8">Geen communicatie</p>
@@ -387,6 +390,11 @@ async function addCommunication() {
     showSuccess('Toegevoegd')
   } catch (err: any) { showError(err) }
   saving.value = false
+}
+
+async function deleteCommunication(id: string) {
+  await communicationApi.delete(id)
+  communications.value = communications.value.filter(c => c.id !== id)
 }
 
 async function addNote() {
