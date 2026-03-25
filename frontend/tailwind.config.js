@@ -13,9 +13,9 @@ export default {
       },
       colors: {
         surface: {
-          DEFAULT: '#18181b',
-          light: '#1f1f23',
-          lighter: '#27272a',
+          DEFAULT: '#ffffff',
+          light: '#f9fafb',
+          lighter: '#f3f4f6',
         },
       },
       animation: {

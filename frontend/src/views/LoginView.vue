@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen flex items-center justify-center bg-zinc-950 px-4">
+  <div class="min-h-screen flex items-center justify-center bg-gray-50 px-4">
     <!-- Subtle grid background -->
     <div class="fixed inset-0 bg-[linear-gradient(rgba(34,197,94,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(34,197,94,0.02)_1px,transparent_1px)] bg-[size:60px_60px]"></div>
 
@@ -7,16 +7,16 @@
       <!-- Logo -->
       <div class="flex items-center justify-center gap-3 mb-10">
         <div class="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
-          <span class="text-green-400 font-bold text-lg">A</span>
+          <span class="text-green-600 font-bold text-lg">A</span>
         </div>
-        <span class="text-xl font-semibold text-zinc-100 tracking-tight">AgencyOS</span>
+        <span class="text-xl font-semibold text-gray-900 tracking-tight">AgencyOS</span>
       </div>
 
       <!-- Form card -->
       <div class="card p-8">
         <form @submit.prevent="handleLogin" class="space-y-5">
           <div>
-            <label class="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">E-mailadres</label>
+            <label class="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">E-mailadres</label>
             <input
               v-model="email"
               type="email"
@@ -28,7 +28,7 @@
           </div>
 
           <div>
-            <label class="block text-xs font-medium text-zinc-400 mb-1.5 uppercase tracking-wider">Wachtwoord</label>
+            <label class="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Wachtwoord</label>
             <input
               v-model="password"
               type="password"
@@ -56,7 +56,7 @@
         </form>
       </div>
 
-      <p class="text-center text-[10px] text-zinc-600 font-mono mt-6">SECURED WITH JWT + BCRYPT</p>
+      <p class="text-center text-[10px] text-gray-400 font-mono mt-6">SECURED WITH JWT + BCRYPT</p>
     </div>
   </div>
 </template>
