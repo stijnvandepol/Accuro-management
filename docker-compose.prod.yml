@@ -1,0 +1,82 @@
+# docker-compose.prod.yml — Productie overrides
+# Gebruik: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# Wijzigingen t.o.v. basis:
+# - Database en Redis NIET extern exposed
+# - Resource limits op alle containers
+# - Logging configuratie
+# - Backend healthcheck
+
+services:
+  db:
+    ports: !override []
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  redis:
+    ports: !override []
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.5"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  backend:
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+          cpus: "1.0"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health')"]
+      interval: 30s
+      timeout: 5s
+      start_period: 15s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+  worker:
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+          cpus: "0.5"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+          cpus: "0.5"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
