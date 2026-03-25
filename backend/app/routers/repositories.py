@@ -18,7 +18,7 @@ async def list_repositories(
     project_id: str,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[RepositoryResponse]:
     project = await db.execute(
         select(ProjectWorkspace).where(ProjectWorkspace.id == project_id, ProjectWorkspace.deleted_at.is_(None))
     )
@@ -38,7 +38,7 @@ async def add_repository(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> RepositoryResponse:
     project = await db.execute(
         select(ProjectWorkspace).where(ProjectWorkspace.id == project_id, ProjectWorkspace.deleted_at.is_(None))
     )
@@ -70,7 +70,7 @@ async def delete_repository(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     result = await db.execute(select(ProjectRepository).where(ProjectRepository.id == repo_id))
     repo = result.scalar_one_or_none()
     if not repo:

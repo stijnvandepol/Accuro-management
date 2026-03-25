@@ -48,7 +48,7 @@ async def list_invoices(
     invoice_status: str | None = Query(None, alias="status"),
     current_user=Depends(require_role(Role.ADMIN, Role.FINANCE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[InvoiceResponse]:
     query = select(Invoice).order_by(Invoice.created_at.desc())
     if client_id:
         query = query.where(Invoice.client_id == client_id)
@@ -67,7 +67,7 @@ async def create_invoice(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.FINANCE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> InvoiceResponse:
     # Verify client
     client = await db.execute(select(Client).where(Client.id == body.client_id, Client.deleted_at.is_(None)))
     if not client.scalar_one_or_none():
@@ -116,7 +116,7 @@ async def get_invoice(
     invoice_id: str,
     current_user=Depends(require_role(Role.ADMIN, Role.FINANCE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> InvoiceResponse:
     result = await db.execute(select(Invoice).where(Invoice.id == invoice_id))
     invoice = result.scalar_one_or_none()
     if not invoice:
@@ -131,7 +131,7 @@ async def update_invoice(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.FINANCE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> InvoiceResponse:
     result = await db.execute(select(Invoice).where(Invoice.id == invoice_id))
     invoice = result.scalar_one_or_none()
     if not invoice:
@@ -180,7 +180,7 @@ async def delete_invoice(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.FINANCE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     result = await db.execute(select(Invoice).where(Invoice.id == invoice_id))
     invoice = result.scalar_one_or_none()
     if not invoice:
@@ -201,7 +201,7 @@ async def mark_invoice_paid(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.FINANCE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> InvoiceResponse:
     result = await db.execute(select(Invoice).where(Invoice.id == invoice_id))
     invoice = result.scalar_one_or_none()
     if not invoice:
@@ -225,7 +225,7 @@ async def download_invoice_pdf(
     invoice_id: str,
     current_user=Depends(require_role(Role.ADMIN, Role.FINANCE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> StreamingResponse:
     result = await db.execute(select(Invoice).where(Invoice.id == invoice_id))
     invoice = result.scalar_one_or_none()
     if not invoice:

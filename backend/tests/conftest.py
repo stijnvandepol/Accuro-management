@@ -1,3 +1,21 @@
+import os
+
+# Set test environment variables BEFORE importing app modules
+# (app.database triggers Settings() at import time)
+os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
+os.environ.setdefault("POSTGRES_PASSWORD", "test")
+os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
+os.environ.setdefault("REDIS_PASSWORD", "test")
+os.environ.setdefault("JWT_SECRET_KEY", "test-secret-key-that-is-at-least-32-characters-long")
+os.environ.setdefault("EXTERNAL_API_KEY", "test-external-api-key-for-testing")
+os.environ.setdefault("CORS_ORIGINS", "http://localhost:3000")
+os.environ.setdefault("SEED_ADMIN_EMAIL", "")
+os.environ.setdefault("SEED_ADMIN_PASSWORD", "")
+
+# Clear any cached settings
+from app.config import get_settings
+get_settings.cache_clear()
+
 import pytest
 from unittest.mock import AsyncMock, patch
 from httpx import AsyncClient, ASGITransport

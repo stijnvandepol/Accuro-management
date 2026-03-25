@@ -45,7 +45,7 @@ async def export_database(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> ExportResponse:
     # Re-authenticate with password
     if not verify_password(body.password, current_user.password_hash):
         raise HTTPException(

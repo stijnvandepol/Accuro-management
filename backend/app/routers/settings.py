@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/v1/settings", tags=["settings"])
 async def get_settings(
     current_user=Depends(require_role(Role.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> BusinessSettingsResponse | None:
     result = await db.execute(select(BusinessSettings).where(BusinessSettings.id == 1))
     return result.scalar_one_or_none()
 
@@ -27,7 +27,7 @@ async def update_settings(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> BusinessSettingsResponse:
     result = await db.execute(select(BusinessSettings).where(BusinessSettings.id == 1))
     settings = result.scalar_one_or_none()
 
@@ -38,8 +38,6 @@ async def update_settings(
     else:
         settings = BusinessSettings(id=1, **data)
         db.add(settings)
-
-    db.add(settings)
     await db.flush()
 
     await create_audit_log(

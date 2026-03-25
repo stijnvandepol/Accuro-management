@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -17,10 +17,10 @@ router = APIRouter(prefix="/api/v1", tags=["communication"])
 @router.get("/projects/{project_id}/communications", response_model=list[CommunicationResponse])
 async def list_communications(
     project_id: str,
-    limit: int = 100,
+    limit: int = Query(default=100, ge=1, le=1000),
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[CommunicationResponse]:
     # Verify project exists
     project = await db.execute(
         select(ProjectWorkspace).where(ProjectWorkspace.id == project_id, ProjectWorkspace.deleted_at.is_(None))
@@ -44,7 +44,7 @@ async def create_communication(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> CommunicationResponse:
     project = await db.execute(
         select(ProjectWorkspace).where(ProjectWorkspace.id == project_id, ProjectWorkspace.deleted_at.is_(None))
     )
@@ -81,7 +81,7 @@ async def delete_communication(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     result = await db.execute(select(CommunicationEntry).where(CommunicationEntry.id == entry_id))
     entry = result.scalar_one_or_none()
     if not entry:

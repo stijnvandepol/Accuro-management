@@ -17,32 +17,37 @@ router = APIRouter(prefix="/api/v1/clients", tags=["clients"])
 async def list_clients(
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE, Role.FINANCE)),
     db: AsyncSession = Depends(get_db),
-):
-    # Get clients with project count
+) -> list[ClientResponse]:
+    # Single query with LEFT JOIN to count projects per client
+    project_count_subq = (
+        select(
+            ProjectWorkspace.client_id,
+            func.count(ProjectWorkspace.id).label("project_count"),
+        )
+        .where(ProjectWorkspace.deleted_at.is_(None))
+        .group_by(ProjectWorkspace.client_id)
+        .subquery()
+    )
+
     result = await db.execute(
-        select(Client)
+        select(Client, func.coalesce(project_count_subq.c.project_count, 0).label("project_count"))
+        .outerjoin(project_count_subq, Client.id == project_count_subq.c.client_id)
         .where(Client.deleted_at.is_(None))
         .order_by(Client.company_name)
     )
-    clients = result.scalars().all()
+    rows = result.all()
 
-    response = []
-    for client in clients:
-        count_result = await db.execute(
-            select(func.count(ProjectWorkspace.id))
-            .where(ProjectWorkspace.client_id == client.id, ProjectWorkspace.deleted_at.is_(None))
+    return [
+        ClientResponse(
+            id=client.id, company_name=client.company_name,
+            contact_name=client.contact_name, email=client.email,
+            phone=client.phone, address=client.address,
+            notes=client.notes, invoice_details=client.invoice_details,
+            created_at=client.created_at, updated_at=client.updated_at,
+            project_count=project_count,
         )
-        project_count = count_result.scalar() or 0
-        client_dict = {
-            "id": client.id, "company_name": client.company_name,
-            "contact_name": client.contact_name, "email": client.email,
-            "phone": client.phone, "address": client.address,
-            "notes": client.notes, "invoice_details": client.invoice_details,
-            "created_at": client.created_at, "updated_at": client.updated_at,
-            "project_count": project_count,
-        }
-        response.append(ClientResponse(**client_dict))
-    return response
+        for client, project_count in rows
+    ]
 
 
 @router.post("", response_model=ClientResponse, status_code=status.HTTP_201_CREATED)
@@ -51,7 +56,7 @@ async def create_client(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> ClientResponse:
     # Duplicate check
     email_lower = body.email.lower().strip()
     existing = await db.execute(
@@ -97,7 +102,7 @@ async def get_client(
     client_id: str,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE, Role.FINANCE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> ClientDetailResponse:
     result = await db.execute(
         select(Client).where(Client.id == client_id, Client.deleted_at.is_(None))
     )
@@ -139,7 +144,7 @@ async def update_client(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> ClientResponse:
     result = await db.execute(
         select(Client).where(Client.id == client_id, Client.deleted_at.is_(None))
     )
@@ -189,7 +194,7 @@ async def delete_client(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     result = await db.execute(
         select(Client).where(Client.id == client_id, Client.deleted_at.is_(None))
     )

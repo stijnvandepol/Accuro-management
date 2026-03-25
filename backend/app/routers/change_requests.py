@@ -20,7 +20,7 @@ async def list_change_requests(
     project_id: str,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[ChangeRequestResponse]:
     project = await db.execute(
         select(ProjectWorkspace).where(ProjectWorkspace.id == project_id, ProjectWorkspace.deleted_at.is_(None))
     )
@@ -42,7 +42,7 @@ async def create_change_request(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> ChangeRequestResponse:
     project = await db.execute(
         select(ProjectWorkspace).where(ProjectWorkspace.id == project_id, ProjectWorkspace.deleted_at.is_(None))
     )
@@ -79,7 +79,7 @@ async def get_change_request(
     cr_id: str,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> ChangeRequestResponse:
     result = await db.execute(select(ChangeRequest).where(ChangeRequest.id == cr_id))
     cr = result.scalar_one_or_none()
     if not cr:
@@ -94,7 +94,7 @@ async def update_change_request(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> ChangeRequestResponse:
     result = await db.execute(select(ChangeRequest).where(ChangeRequest.id == cr_id))
     cr = result.scalar_one_or_none()
     if not cr:
@@ -102,7 +102,17 @@ async def update_change_request(
 
     changes = {}
     update_data = body.model_dump(exclude_unset=True)
+
+    # Map of allowed updatable fields
+    updatable_fields = {
+        "title", "description", "status", "impact",
+        "github_issue_url", "github_branch", "github_pr_url",
+        "assigned_to_user_id",
+    }
+
     for field, value in update_data.items():
+        if field not in updatable_fields:
+            continue
         if field == "description" and value:
             value = sanitize_html(value)
         if hasattr(value, "value"):
@@ -110,7 +120,22 @@ async def update_change_request(
         old_value = getattr(cr, field)
         if old_value != value:
             changes[field] = {"old": str(old_value), "new": str(value)}
-            setattr(cr, field, value)
+            if field == "title":
+                cr.title = value
+            elif field == "description":
+                cr.description = value
+            elif field == "status":
+                cr.status = value
+            elif field == "impact":
+                cr.impact = value
+            elif field == "github_issue_url":
+                cr.github_issue_url = value
+            elif field == "github_branch":
+                cr.github_branch = value
+            elif field == "github_pr_url":
+                cr.github_pr_url = value
+            elif field == "assigned_to_user_id":
+                cr.assigned_to_user_id = value
 
     if changes:
         await db.flush()
@@ -131,7 +156,7 @@ async def reopen_change_request(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> ChangeRequestResponse:
     result = await db.execute(select(ChangeRequest).where(ChangeRequest.id == cr_id))
     cr = result.scalar_one_or_none()
     if not cr:
@@ -158,7 +183,7 @@ async def close_change_request(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> ChangeRequestResponse:
     result = await db.execute(select(ChangeRequest).where(ChangeRequest.id == cr_id))
     cr = result.scalar_one_or_none()
     if not cr:

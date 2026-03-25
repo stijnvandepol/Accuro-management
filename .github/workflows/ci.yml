@@ -1,0 +1,59 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    name: Backend tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r backend/requirements.txt
+
+      - name: Run tests with coverage
+        working-directory: backend
+        env:
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          POSTGRES_PASSWORD: "test"
+          REDIS_URL: "redis://localhost:6379/0"
+          REDIS_PASSWORD: "test"
+          JWT_SECRET_KEY: "test-secret-key-that-is-at-least-32-characters-long"
+          EXTERNAL_API_KEY: "test-external-api-key-for-testing"
+          CORS_ORIGINS: "http://localhost:3000"
+          SEED_ADMIN_EMAIL: ""
+          SEED_ADMIN_PASSWORD: ""
+        run: pytest --cov=app --cov-report=term-missing
+
+  frontend:
+    name: Frontend build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        working-directory: frontend
+        run: npm install
+
+      - name: Build
+        working-directory: frontend
+        run: npm run build

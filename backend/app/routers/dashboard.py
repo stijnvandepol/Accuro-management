@@ -20,7 +20,7 @@ router = APIRouter(prefix="/api/v1/dashboard", tags=["dashboard"])
 async def get_dashboard_stats(
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> DashboardStats:
     # In-progress projects
     in_progress = await db.execute(
         select(func.count(ProjectWorkspace.id))

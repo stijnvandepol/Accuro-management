@@ -18,7 +18,7 @@ router = APIRouter(prefix="/api/v1/users", tags=["users"])
 async def list_users(
     current_user: User = Depends(require_role(Role.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[UserResponse]:
     result = await db.execute(select(User).order_by(User.created_at.desc()))
     return result.scalars().all()
 
@@ -29,7 +29,7 @@ async def create_user(
     request: Request,
     current_user: User = Depends(require_role(Role.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> UserResponse:
     existing = await db.execute(select(User).where(User.email == body.email.lower().strip()))
     if existing.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
@@ -57,7 +57,7 @@ async def get_user(
     user_id: str,
     current_user: User = Depends(require_role(Role.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> UserResponse:
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
@@ -72,7 +72,7 @@ async def update_user(
     request: Request,
     current_user: User = Depends(require_role(Role.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> UserResponse:
     result = await db.execute(select(User).where(User.id == user_id))
     user = result.scalar_one_or_none()
     if not user:
@@ -109,7 +109,7 @@ async def delete_user(
     request: Request,
     current_user: User = Depends(require_role(Role.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     if user_id == current_user.id:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot delete yourself")
 

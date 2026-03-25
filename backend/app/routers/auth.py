@@ -18,7 +18,7 @@ async def login(
     body: LoginRequest,
     request: Request,
     db: AsyncSession = Depends(get_db),
-):
+) -> TokenResponse:
     result = await db.execute(
         select(User).where(User.email == body.email.lower().strip(), User.is_active == True)
     )
@@ -46,7 +46,7 @@ async def login(
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(body: RefreshRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def refresh_token(body: RefreshRequest, request: Request, db: AsyncSession = Depends(get_db)) -> TokenResponse:
     payload = decode_token(body.refresh_token)
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token")
@@ -73,12 +73,12 @@ async def refresh_token(body: RefreshRequest, request: Request, db: AsyncSession
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(current_user: User = Depends(get_current_user)):
+async def logout(current_user: User = Depends(get_current_user)) -> None:
     await delete_refresh_token(current_user.id)
 
 
 @router.get("/me")
-async def get_me(current_user: User = Depends(get_current_user)):
+async def get_me(current_user: User = Depends(get_current_user)) -> dict:
     return {
         "id": current_user.id,
         "name": current_user.name,
@@ -94,7 +94,7 @@ async def change_password(
     request: Request,
     current_user: User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     if not verify_password(body.current_password, current_user.password_hash):
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Current password is incorrect")
 

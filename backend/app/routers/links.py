@@ -18,7 +18,7 @@ async def list_links(
     project_id: str,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[LinkResponse]:
     project = await db.execute(
         select(ProjectWorkspace).where(ProjectWorkspace.id == project_id, ProjectWorkspace.deleted_at.is_(None))
     )
@@ -38,7 +38,7 @@ async def add_link(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> LinkResponse:
     project = await db.execute(
         select(ProjectWorkspace).where(ProjectWorkspace.id == project_id, ProjectWorkspace.deleted_at.is_(None))
     )
@@ -69,7 +69,7 @@ async def delete_link(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     result = await db.execute(select(ProjectLink).where(ProjectLink.id == link_id))
     link = result.scalar_one_or_none()
     if not link:

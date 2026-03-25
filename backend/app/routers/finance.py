@@ -24,7 +24,7 @@ router = APIRouter(prefix="/api/v1/finance", tags=["finance"])
 async def get_finance_overview(
     current_user=Depends(require_role(Role.ADMIN, Role.FINANCE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> FinanceOverview:
     # Total revenue (PAID)
     paid = await db.execute(
         select(func.coalesce(func.sum(Invoice.total_amount), 0))

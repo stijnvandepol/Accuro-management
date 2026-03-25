@@ -19,7 +19,7 @@ async def list_notes(
     project_id: str,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[NoteResponse]:
     project = await db.execute(
         select(ProjectWorkspace).where(ProjectWorkspace.id == project_id, ProjectWorkspace.deleted_at.is_(None))
     )
@@ -41,7 +41,7 @@ async def create_note(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> NoteResponse:
     project = await db.execute(
         select(ProjectWorkspace).where(ProjectWorkspace.id == project_id, ProjectWorkspace.deleted_at.is_(None))
     )
@@ -72,7 +72,7 @@ async def delete_note(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     result = await db.execute(select(InternalNote).where(InternalNote.id == note_id))
     note = result.scalar_one_or_none()
     if not note:

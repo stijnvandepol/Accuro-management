@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from slugify import slugify
-import time
+import uuid
+import structlog
 
 from app.database import get_db
 from app.core.dependencies import verify_external_api_key, get_client_ip
@@ -16,6 +17,8 @@ from app.models.user import User
 from app.core.rbac import Role
 from app.schemas.external import ExternalTicketCreate, ExternalTicketResponse
 
+logger = structlog.get_logger(__name__)
+
 router = APIRouter(prefix="/api/v1/external", tags=["external"])
 
 
@@ -25,7 +28,7 @@ async def create_external_ticket(
     request: Request,
     api_key_valid: bool = Depends(verify_external_api_key),
     db: AsyncSession = Depends(get_db),
-):
+) -> ExternalTicketResponse:
     # Resolve or create client
     client = None
     if body.client_id:
@@ -61,7 +64,7 @@ async def create_external_ticket(
         result = await db.execute(select(ProjectWorkspace).where(ProjectWorkspace.slug == slug))
         if not result.scalar_one_or_none():
             break
-        slug = f"{base_slug}-{int(time.time())}"
+        slug = f"{base_slug}-{uuid.uuid4().hex[:8]}"
 
     # Resolve system actor (first admin)
     admin_result = await db.execute(
@@ -119,8 +122,8 @@ async def create_external_ticket(
             project_slug=project.slug,
             change_request_id=cr.id,
         )
-    except Exception:
-        pass
+    except Exception as exc:
+        logger.error("discord_notification_failed", project_slug=project.slug, error=str(exc))
 
     return ExternalTicketResponse(
         ticket_id=cr.id,
@@ -136,7 +139,7 @@ async def get_ticket_status(
     ticket_id: str,
     api_key_valid: bool = Depends(verify_external_api_key),
     db: AsyncSession = Depends(get_db),
-):
+) -> dict:
     result = await db.execute(select(ChangeRequest).where(ChangeRequest.id == ticket_id))
     cr = result.scalar_one_or_none()
     if not cr:

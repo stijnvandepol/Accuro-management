@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from slugify import slugify
-import time
+import uuid
 
 from app.database import get_db
 from app.core.dependencies import require_role, get_client_ip
@@ -23,7 +23,7 @@ async def _generate_unique_slug(db: AsyncSession, name: str) -> str:
         result = await db.execute(select(ProjectWorkspace).where(ProjectWorkspace.slug == slug))
         if not result.scalar_one_or_none():
             return slug
-        slug = f"{base_slug}-{int(time.time())}"
+        slug = f"{base_slug}-{uuid.uuid4().hex[:8]}"
     raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not generate unique slug")
 
 
@@ -34,7 +34,7 @@ async def list_projects(
     priority: str | None = None,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[ProjectResponse]:
     query = select(ProjectWorkspace).where(ProjectWorkspace.deleted_at.is_(None))
     if status_filter:
         query = query.where(ProjectWorkspace.status == status_filter)
@@ -55,7 +55,7 @@ async def create_project(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> ProjectResponse:
     # Verify client exists
     client_result = await db.execute(
         select(Client).where(Client.id == body.client_id, Client.deleted_at.is_(None))
@@ -100,7 +100,7 @@ async def get_project_by_slug(
     slug: str,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> ProjectDetailResponse:
     result = await db.execute(
         select(ProjectWorkspace).where(ProjectWorkspace.slug == slug, ProjectWorkspace.deleted_at.is_(None))
     )
@@ -115,7 +115,7 @@ async def get_project(
     project_id: str,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> ProjectDetailResponse:
     result = await db.execute(
         select(ProjectWorkspace).where(ProjectWorkspace.id == project_id, ProjectWorkspace.deleted_at.is_(None))
     )
@@ -190,7 +190,7 @@ async def update_project(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> ProjectResponse:
     result = await db.execute(
         select(ProjectWorkspace).where(ProjectWorkspace.id == project_id, ProjectWorkspace.deleted_at.is_(None))
     )
@@ -200,7 +200,17 @@ async def update_project(
 
     changes = {}
     update_data = body.model_dump(exclude_unset=True)
+
+    # Map of allowed updatable fields
+    updatable_fields = {
+        "name", "project_type", "status", "priority", "description",
+        "intake_summary", "scope", "tech_stack", "domain_name",
+        "hosting_info", "start_date", "owner_user_id", "tags",
+    }
+
     for field, value in update_data.items():
+        if field not in updatable_fields:
+            continue
         if field == "description" and value:
             value = sanitize_html(value)
         if hasattr(value, "value"):
@@ -208,7 +218,32 @@ async def update_project(
         old_value = getattr(project, field)
         if old_value != value:
             changes[field] = {"old": str(old_value), "new": str(value)}
-            setattr(project, field, value)
+            if field == "name":
+                project.name = value
+            elif field == "project_type":
+                project.project_type = value
+            elif field == "status":
+                project.status = value
+            elif field == "priority":
+                project.priority = value
+            elif field == "description":
+                project.description = value
+            elif field == "intake_summary":
+                project.intake_summary = value
+            elif field == "scope":
+                project.scope = value
+            elif field == "tech_stack":
+                project.tech_stack = value
+            elif field == "domain_name":
+                project.domain_name = value
+            elif field == "hosting_info":
+                project.hosting_info = value
+            elif field == "start_date":
+                project.start_date = value
+            elif field == "owner_user_id":
+                project.owner_user_id = value
+            elif field == "tags":
+                project.tags = value
 
     if changes:
         await db.flush()
@@ -230,7 +265,7 @@ async def delete_project(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN)),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     result = await db.execute(
         select(ProjectWorkspace).where(ProjectWorkspace.id == project_id, ProjectWorkspace.deleted_at.is_(None))
     )

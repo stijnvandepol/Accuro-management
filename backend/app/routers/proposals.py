@@ -22,7 +22,7 @@ async def list_proposals(
     project_id: str,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> list[ProposalResponse]:
     result = await db.execute(
         select(ProposalDraft)
         .where(ProposalDraft.project_id == project_id)
@@ -37,7 +37,7 @@ async def create_proposal(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> ProposalResponse:
     client = await db.execute(select(Client).where(Client.id == body.client_id, Client.deleted_at.is_(None)))
     if not client.scalar_one_or_none():
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
@@ -75,7 +75,7 @@ async def get_proposal(
     proposal_id: str,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> ProposalResponse:
     result = await db.execute(select(ProposalDraft).where(ProposalDraft.id == proposal_id))
     proposal = result.scalar_one_or_none()
     if not proposal:
@@ -90,7 +90,7 @@ async def update_proposal(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> ProposalResponse:
     result = await db.execute(select(ProposalDraft).where(ProposalDraft.id == proposal_id))
     proposal = result.scalar_one_or_none()
     if not proposal:
@@ -127,7 +127,7 @@ async def delete_proposal(
     request: Request,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> None:
     result = await db.execute(select(ProposalDraft).where(ProposalDraft.id == proposal_id))
     proposal = result.scalar_one_or_none()
     if not proposal:
@@ -147,7 +147,7 @@ async def download_proposal_pdf(
     proposal_id: str,
     current_user=Depends(require_role(Role.ADMIN, Role.EMPLOYEE)),
     db: AsyncSession = Depends(get_db),
-):
+) -> StreamingResponse:
     result = await db.execute(select(ProposalDraft).where(ProposalDraft.id == proposal_id))
     proposal = result.scalar_one_or_none()
     if not proposal:
