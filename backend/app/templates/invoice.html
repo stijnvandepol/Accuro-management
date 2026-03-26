@@ -226,7 +226,8 @@
             {% endif %}
         </div>
         <div class="company-details">
-            {% if settings.address %}<span>{{ settings.address }}</span>{% endif %}
+            {% if settings.street %}<span>{{ settings.street }}</span>{% endif %}
+            {% if settings.postal_code or settings.city %}<span>{{ settings.postal_code }}{% if settings.postal_code and settings.city %} {% endif %}{{ settings.city }}</span>{% endif %}
             {% if settings.phone %}<span>{{ settings.phone }}</span>{% endif %}
             {% if settings.iban %}<span>{{ settings.iban }}</span>{% endif %}
             {% if settings.kvk_number %}<span>KVK {{ settings.kvk_number }}</span>{% endif %}
@@ -240,7 +241,8 @@
             <div class="recipient-label">Factuur voor</div>
             <strong>{{ client.company_name }}</strong><br/>
             {% if client.contact_name %}<span class="tav">t.a.v. {{ client.contact_name }}</span><br/>{% endif %}
-            {% if client.address %}{{ client.address }}<br/>{% endif %}
+            {% if client.street %}{{ client.street }}<br/>{% endif %}
+            {% if client.postal_code or client.city %}{{ client.postal_code }}{% if client.postal_code and client.city %} {% endif %}{{ client.city }}<br/>{% endif %}
             {% if client.email %}<span style="color:#888;">{{ client.email }}</span>{% endif %}
         </div>
         <div class="invoice-meta">
@@ -325,7 +327,7 @@
 
     <!-- Footer -->
     <div class="footer">
-        <span>{{ settings.company_name }}{% if settings.address %} &nbsp;&middot;&nbsp; {{ settings.address }}{% endif %}</span>
+        <span>{{ settings.company_name }}{% if settings.street %} &nbsp;&middot;&nbsp; {{ settings.street }}{% if settings.city %}, {{ settings.city }}{% endif %}{% endif %}</span>
         <span>
             {% if settings.kvk_number %}KVK: {{ settings.kvk_number }}{% endif %}
             {% if settings.kvk_number and settings.vat_number %} &nbsp;&middot;&nbsp; {% endif %}

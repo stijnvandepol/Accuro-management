@@ -85,7 +85,7 @@
         {% endif %}
     </div>
     <div class="header-info">
-        {% if settings.address %}<span class="hi-lbl">Adres</span><span class="hi-val">{{ settings.address }}</span>{% endif %}
+        {% if settings.street %}<span class="hi-lbl">Adres</span><span class="hi-val">{{ settings.street }}{% if settings.postal_code or settings.city %}, {{ settings.postal_code }} {{ settings.city }}{% endif %}</span>{% endif %}
         {% if settings.phone %}<span class="hi-lbl">Telefoon</span><span class="hi-val">{{ settings.phone }}</span>{% endif %}
         {% if settings.kvk_number %}<span class="hi-lbl">KVK</span><span class="hi-val">{{ settings.kvk_number }}</span>{% endif %}
         {% if settings.vat_number %}<span class="hi-lbl">BTW</span><span class="hi-val">{{ settings.vat_number }}</span>{% endif %}
@@ -148,7 +148,7 @@
 {% endif %}
 
 <div class="footer">
-    <span>{{ settings.company_name }}{% if settings.address %} &middot; {{ settings.address }}{% endif %}</span>
+    <span>{{ settings.company_name }}{% if settings.street %} &middot; {{ settings.street }}{% if settings.city %}, {{ settings.city }}{% endif %}{% endif %}</span>
     <span>
         {% if settings.kvk_number %}KVK: {{ settings.kvk_number }}{% endif %}
         {% if settings.kvk_number and settings.vat_number %} &middot; {% endif %}

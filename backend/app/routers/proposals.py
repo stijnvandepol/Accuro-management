@@ -195,7 +195,9 @@ async def download_proposal_pdf(
     }
     settings_data = {
         "company_name": settings.company_name,
-        "address": settings.address,
+        "street": settings.street,
+        "postal_code": settings.postal_code,
+        "city": settings.city,
         "email": settings.email,
         "phone": settings.phone,
         "website_url": settings.website_url,

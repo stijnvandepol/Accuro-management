@@ -24,8 +24,16 @@
             <input v-model="settings.website_url" class="input font-mono" placeholder="jouwbedrijf.nl" />
           </div>
           <div class="col-span-2">
-            <label class="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Adres</label>
-            <textarea v-model="settings.address" class="input min-h-[60px]" />
+            <label class="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Straat + huisnummer</label>
+            <input v-model="settings.street" class="input" placeholder="Hoofdstraat 1" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Postcode</label>
+            <input v-model="settings.postal_code" class="input font-mono" placeholder="1234 AB" maxlength="7" @input="settings.postal_code = settings.postal_code?.toUpperCase()" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Plaats</label>
+            <input v-model="settings.city" class="input" placeholder="Amsterdam" />
           </div>
           <div>
             <label class="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">KVK-nummer</label>
@@ -118,7 +126,7 @@ import InputNumber from 'primevue/inputnumber'
 const auth = useAuthStore()
 const { showError, showSuccess } = useErrorHandler()
 const confirm = useConfirm()
-const settings = ref<any>({ company_name: '', email: '', phone: '', website_url: '', address: '', kvk_number: '', vat_number: '', iban: '', account_holder_name: '', default_vat_rate: 21, payment_term_days: 30, default_quote_valid_days: 30, default_price_label: 'Projectprijs' })
+const settings = ref<any>({ company_name: '', email: '', phone: '', website_url: '', street: '', postal_code: '', city: '', kvk_number: '', vat_number: '', iban: '', account_holder_name: '', default_vat_rate: 21, payment_term_days: 30, default_quote_valid_days: 30, default_price_label: 'Projectprijs' })
 const errors = ref<Record<string, string>>({})
 const users = ref<any[]>([])
 const savingSettings = ref(false)

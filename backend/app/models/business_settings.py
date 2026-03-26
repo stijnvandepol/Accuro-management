@@ -9,7 +9,9 @@ class BusinessSettings(TimestampMixin, Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, default=1)
     company_name: Mapped[str] = mapped_column(String(255), nullable=False)
-    address: Mapped[str | None] = mapped_column(Text, nullable=True)
+    street: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    postal_code: Mapped[str | None] = mapped_column(String(10), nullable=True)
+    city: Mapped[str | None] = mapped_column(String(100), nullable=True)
     kvk_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     vat_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     iban: Mapped[str | None] = mapped_column(String(34), nullable=True)

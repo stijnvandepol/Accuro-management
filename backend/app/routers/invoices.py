@@ -274,11 +274,15 @@ async def download_invoice_pdf(
         "company_name": client.company_name,
         "contact_name": client.contact_name,
         "email": client.email,
-        "address": client.address,
+        "street": client.street,
+        "postal_code": client.postal_code,
+        "city": client.city,
     }
     settings_data = {
         "company_name": settings.company_name,
-        "address": settings.address,
+        "street": settings.street,
+        "postal_code": settings.postal_code,
+        "city": settings.city,
         "email": settings.email,
         "phone": settings.phone,
         "kvk_number": settings.kvk_number,

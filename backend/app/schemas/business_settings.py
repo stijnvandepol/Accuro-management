@@ -12,7 +12,9 @@ def _iban_mod97(iban: str) -> bool:
 
 class BusinessSettingsUpdate(BaseModel):
     company_name: str
-    address: str | None = None
+    street: str | None = None
+    postal_code: str | None = None
+    city: str | None = None
     kvk_number: str | None = None
     vat_number: str | None = None
     iban: str | None = None

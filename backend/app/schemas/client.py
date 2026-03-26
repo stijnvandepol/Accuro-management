@@ -7,7 +7,9 @@ class ClientCreate(BaseModel):
     contact_name: str
     email: EmailStr
     phone: str | None = None
-    address: str | None = None
+    street: str | None = None
+    postal_code: str | None = None
+    city: str | None = None
     notes: str | None = None
     invoice_details: str | None = None
 
@@ -24,7 +26,9 @@ class ClientUpdate(BaseModel):
     contact_name: str | None = None
     email: EmailStr | None = None
     phone: str | None = None
-    address: str | None = None
+    street: str | None = None
+    postal_code: str | None = None
+    city: str | None = None
     notes: str | None = None
     invoice_details: str | None = None
 
@@ -35,7 +39,9 @@ class ClientResponse(BaseModel):
     contact_name: str
     email: str
     phone: str | None
-    address: str | None
+    street: str | None
+    postal_code: str | None
+    city: str | None
     notes: str | None
     invoice_details: str | None
     created_at: datetime

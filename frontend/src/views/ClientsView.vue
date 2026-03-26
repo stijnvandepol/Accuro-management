@@ -55,8 +55,18 @@
           <input v-model="form.phone" class="input" />
         </div>
         <div>
-          <label class="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Adres</label>
-          <textarea v-model="form.address" class="input min-h-[60px]" />
+          <label class="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Straat + huisnummer</label>
+          <input v-model="form.street" class="input" placeholder="Hoofdstraat 1" />
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Postcode</label>
+            <input v-model="form.postal_code" class="input font-mono" placeholder="1234 AB" maxlength="7" @input="form.postal_code = form.postal_code?.toUpperCase()" />
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Plaats</label>
+            <input v-model="form.city" class="input" placeholder="Amsterdam" />
+          </div>
         </div>
         <div class="flex justify-end gap-2 pt-3 border-t border-gray-200">
           <button type="button" class="btn-secondary" @click="showCreate = false">Annuleren</button>
@@ -82,7 +92,7 @@ const clients = ref<any[]>([])
 const loading = ref(true)
 const showCreate = ref(false)
 const saving = ref(false)
-const form = ref({ company_name: '', contact_name: '', email: '', phone: '', address: '' })
+const form = ref({ company_name: '', contact_name: '', email: '', phone: '', street: '', postal_code: '', city: '' })
 
 onMounted(loadClients)
 
@@ -98,7 +108,7 @@ async function createClient() {
   try {
     await clientsApi.create(form.value)
     showCreate.value = false
-    form.value = { company_name: '', contact_name: '', email: '', phone: '', address: '' }
+    form.value = { company_name: '', contact_name: '', email: '', phone: '', street: '', postal_code: '', city: '' }
     showSuccess('Klant aangemaakt')
     await loadClients()
   } catch (err: any) { showError(err) }
