@@ -349,7 +349,7 @@ const showProposalDialog = ref(false)
 
 const commForm = ref<any>({ type: 'EMAIL', subject: '', content: '', occurred_at: new Date() })
 const repoForm = ref<any>({ repo_name: '', repo_url: '', default_branch: 'main' })
-const proposalForm = ref<any>({ title: '', recipient_name: '', recipient_email: '', amount: 0, delivery_time: '', summary: '', scope: '' })
+const proposalForm = ref<any>({ title: '', recipient_name: '', recipient_email: '', recipient_company: '', amount: 0, delivery_time: '', summary: '', scope: '' })
 const linkForm = ref<any>({ label: '', url: '', description: '' })
 const editForm = ref<any>({})
 interface InvoiceLineItem { description: string; quantity: number; unit_price: number; total: number }
@@ -569,7 +569,17 @@ async function deleteProjectTask(task: any) {
 }
 
 function openProposalDialog() {
-  proposalForm.value = { title: '', recipient_name: '', recipient_email: '', amount: 0, delivery_time: '', summary: '', scope: '' }
+  const client = project.value?.client
+  proposalForm.value = {
+    title: '',
+    recipient_name: client?.contact_name || '',
+    recipient_email: client?.email || '',
+    recipient_company: client?.company_name || '',
+    amount: 0,
+    delivery_time: '',
+    summary: '',
+    scope: '',
+  }
   showProposalDialog.value = true
 }
 

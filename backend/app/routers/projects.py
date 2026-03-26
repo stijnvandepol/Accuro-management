@@ -150,7 +150,7 @@ async def _build_project_detail(db: AsyncSession, project: ProjectWorkspace) -> 
     # Get client
     client_result = await db.execute(select(Client).where(Client.id == project.client_id))
     client = client_result.scalar_one_or_none()
-    client_dict = {"id": client.id, "company_name": client.company_name, "contact_name": client.contact_name} if client else None
+    client_dict = {"id": client.id, "company_name": client.company_name, "contact_name": client.contact_name, "email": client.email} if client else None
 
     # Get owner
     owner_dict = None
