@@ -23,8 +23,8 @@ class TaxYearSettings(TimestampMixin, Base):
     zvw_max_inkomen: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("71628.00"))
 
     # Inkomstenbelasting schijven
-    ib_rate_1: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("35.82"))
-    ib_rate_2: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("37.48"))
+    ib_rate_1: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("35.75"))
+    ib_rate_2: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("37.56"))
     ib_rate_3: Mapped[Decimal] = mapped_column(Numeric(5, 2), default=Decimal("49.50"))
     ib_bracket_1: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("38441.00"))
     ib_bracket_2: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("76817.00"))

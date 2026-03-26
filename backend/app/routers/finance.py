@@ -32,12 +32,17 @@ _DEFAULTS = {
     "mkb_vrijstelling_rate": Decimal("12.70"),
     "zvw_rate": Decimal("5.32"),
     "zvw_max_inkomen": Decimal("71628.00"),
-    "ib_rate_1": Decimal("35.82"),
-    "ib_rate_2": Decimal("37.48"),
+    "ib_rate_1": Decimal("35.75"),
+    "ib_rate_2": Decimal("37.56"),
     "ib_rate_3": Decimal("49.50"),
     "ib_bracket_1": Decimal("38441.00"),
     "ib_bracket_2": Decimal("76817.00"),
 }
+
+
+def _nl_currency(v: Decimal) -> str:
+    """Format a Decimal as a Dutch integer currency string, e.g. 38.441."""
+    return f"{int(v):,}".replace(",", ".")
 
 
 async def _get_or_default_tax_settings(db: AsyncSession, year: int) -> TaxYearSettingsResponse:
@@ -220,19 +225,19 @@ async def get_tax_summary(
     # Schijf 1
     in_schijf_1 = min(resterend, s.ib_bracket_1)
     ib_1 = (in_schijf_1 * s.ib_rate_1 / Decimal("100")).quantize(Decimal("0.01"))
-    ib_schijven.append(IBSchijf(label=f"Schijf 1 (t/m €{s.ib_bracket_1:,.0f})", rate=s.ib_rate_1, inkomen_in_schijf=in_schijf_1, belasting=ib_1))
+    ib_schijven.append(IBSchijf(label=f"Schijf 1 (t/m €{_nl_currency(s.ib_bracket_1)})", rate=s.ib_rate_1, inkomen_in_schijf=in_schijf_1, belasting=ib_1))
     resterend = max(resterend - s.ib_bracket_1, Decimal("0"))
 
     # Schijf 2
     in_schijf_2 = min(resterend, s.ib_bracket_2 - s.ib_bracket_1)
     ib_2 = (in_schijf_2 * s.ib_rate_2 / Decimal("100")).quantize(Decimal("0.01"))
-    ib_schijven.append(IBSchijf(label=f"Schijf 2 (€{s.ib_bracket_1:,.0f} – €{s.ib_bracket_2:,.0f})", rate=s.ib_rate_2, inkomen_in_schijf=in_schijf_2, belasting=ib_2))
+    ib_schijven.append(IBSchijf(label=f"Schijf 2 (€{_nl_currency(s.ib_bracket_1)} – €{_nl_currency(s.ib_bracket_2)})", rate=s.ib_rate_2, inkomen_in_schijf=in_schijf_2, belasting=ib_2))
     resterend = max(resterend - (s.ib_bracket_2 - s.ib_bracket_1), Decimal("0"))
 
     # Schijf 3
     in_schijf_3 = resterend
     ib_3 = (in_schijf_3 * s.ib_rate_3 / Decimal("100")).quantize(Decimal("0.01"))
-    ib_schijven.append(IBSchijf(label=f"Schijf 3 (boven €{s.ib_bracket_2:,.0f})", rate=s.ib_rate_3, inkomen_in_schijf=in_schijf_3, belasting=ib_3))
+    ib_schijven.append(IBSchijf(label=f"Schijf 3 (boven €{_nl_currency(s.ib_bracket_2)})", rate=s.ib_rate_3, inkomen_in_schijf=in_schijf_3, belasting=ib_3))
 
     ib_totaal = ib_1 + ib_2 + ib_3
 
