@@ -9,7 +9,7 @@
         <div class="w-10 h-10 rounded-xl bg-green-500/10 border border-green-500/20 flex items-center justify-center">
           <span class="text-green-600 font-bold text-lg">A</span>
         </div>
-        <span class="text-xl font-semibold text-gray-900 tracking-tight">AgencyOS</span>
+        <span class="text-xl font-semibold text-gray-900 tracking-tight">Accuro</span>
       </div>
 
       <!-- Form card -->

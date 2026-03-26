@@ -15,7 +15,7 @@
         <span
           class="ml-3 text-sm font-semibold text-gray-900 whitespace-nowrap transition-opacity duration-200"
           :class="sidebarExpanded ? 'opacity-100' : 'opacity-0'"
-        >AgencyOS</span>
+        >Accuro</span>
       </div>
 
       <!-- Nav -->
@@ -128,7 +128,7 @@ const pageTitles: Record<string, [string, string?]> = {
   settings: ['Instellingen', 'beheer'],
 }
 
-const pageTitle = computed(() => pageTitles[route.name as string]?.[0] || 'AgencyOS')
+const pageTitle = computed(() => pageTitles[route.name as string]?.[0] || 'Accuro')
 const pageSubtitle = computed(() => pageTitles[route.name as string]?.[1] || '')
 
 const initials = computed(() => {

@@ -41,7 +41,8 @@ async def list_clients(
         ClientResponse(
             id=client.id, company_name=client.company_name,
             contact_name=client.contact_name, email=client.email,
-            phone=client.phone, address=client.address,
+            phone=client.phone, street=client.street,
+            postal_code=client.postal_code, city=client.city,
             notes=client.notes, invoice_details=client.invoice_details,
             created_at=client.created_at, updated_at=client.updated_at,
             project_count=project_count,
@@ -73,7 +74,9 @@ async def create_client(
         contact_name=body.contact_name.strip(),
         email=email_lower,
         phone=body.phone,
-        address=body.address,
+        street=body.street,
+        postal_code=body.postal_code,
+        city=body.city,
         notes=body.notes,
         invoice_details=body.invoice_details,
     )
@@ -90,7 +93,8 @@ async def create_client(
     return ClientResponse(
         id=client.id, company_name=client.company_name,
         contact_name=client.contact_name, email=client.email,
-        phone=client.phone, address=client.address,
+        phone=client.phone, street=client.street,
+        postal_code=client.postal_code, city=client.city,
         notes=client.notes, invoice_details=client.invoice_details,
         created_at=client.created_at, updated_at=client.updated_at,
         project_count=0,
@@ -129,7 +133,8 @@ async def get_client(
     return ClientDetailResponse(
         id=client.id, company_name=client.company_name,
         contact_name=client.contact_name, email=client.email,
-        phone=client.phone, address=client.address,
+        phone=client.phone, street=client.street,
+        postal_code=client.postal_code, city=client.city,
         notes=client.notes, invoice_details=client.invoice_details,
         created_at=client.created_at, updated_at=client.updated_at,
         project_count=len(projects),
@@ -181,7 +186,8 @@ async def update_client(
     return ClientResponse(
         id=client.id, company_name=client.company_name,
         contact_name=client.contact_name, email=client.email,
-        phone=client.phone, address=client.address,
+        phone=client.phone, street=client.street,
+        postal_code=client.postal_code, city=client.city,
         notes=client.notes, invoice_details=client.invoice_details,
         created_at=client.created_at, updated_at=client.updated_at,
         project_count=project_count,

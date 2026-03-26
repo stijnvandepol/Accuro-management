@@ -8,7 +8,7 @@ import re
 class Settings(BaseSettings):
     # App
     APP_ENV: str = "development"
-    APP_NAME: str = "AgencyOS"
+    APP_NAME: str = "Accuro"
 
     # Database
     DATABASE_URL: str
