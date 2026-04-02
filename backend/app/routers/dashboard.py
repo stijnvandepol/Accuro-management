@@ -83,7 +83,7 @@ async def get_dashboard_stats(
         select(func.count(ProjectWorkspace.id))
         .where(
             ProjectWorkspace.deleted_at.is_(None),
-            ProjectWorkspace.status.in_([ProjectStatus.IN_PROGRESS.value, ProjectStatus.REVIEW.value]),
+            ProjectWorkspace.status.in_([ProjectStatus.IN_PROGRESS.value, ProjectStatus.TESTING.value, ProjectStatus.REVIEW.value]),
             ProjectWorkspace.project_type.in_(WEB_TYPES),
             ProjectWorkspace.id.notin_(subq),
         )

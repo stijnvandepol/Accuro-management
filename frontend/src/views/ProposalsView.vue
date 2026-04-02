@@ -41,10 +41,12 @@
         </div>
           <div class="col-span-2">
             <label class="block text-xs font-medium text-gray-500 mb-1.5 uppercase tracking-wider">Prijslabel</label>
-            <div class="flex gap-2">
-              <Dropdown v-model="form.price_label" :options="priceLabelOptions" optionLabel="label" optionValue="value" class="w-48" />
-              <input v-model="form.price_label" class="input flex-1" placeholder="Of vrij invoeren..." />
-            </div>
+            <input v-model="form.price_label" class="input" list="price-label-suggestions" placeholder="Bijv. Projectprijs, Abonnementsprijs..." />
+            <datalist id="price-label-suggestions">
+              <option value="Projectprijs" />
+              <option value="Abonnementsprijs" />
+              <option value="Maatwerktarief" />
+            </datalist>
           </div>
         <div class="flex justify-end gap-2 pt-3 border-t border-gray-200">
           <button type="button" class="btn-secondary" @click="showCreate = false">Annuleren</button>
@@ -86,11 +88,6 @@ const form = ref<any>({
   price_label: 'Projectprijs',
 })
 
-const priceLabelOptions = [
-  { label: 'Projectprijs', value: 'Projectprijs' },
-  { label: 'Abonnementsprijs', value: 'Abonnementsprijs' },
-  { label: 'Maatwerktarief', value: 'Maatwerktarief' },
-]
 
 onMounted(async () => {
   await Promise.all([loadProposals(), loadClients()])
