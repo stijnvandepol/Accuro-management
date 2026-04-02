@@ -121,3 +121,15 @@ class TestProjects:
         }, headers=auth_header(admin_token))
         assert response.status_code == 201
         assert response.json()["status"] == "LIVE"
+
+    async def test_update_project_tools_and_recurring_fee(self, client, admin_token, test_project_data):
+        response = await client.patch(f"/api/v1/projects/{test_project_data['id']}", json={
+            "tools_used": ["n8n", "OpenAI"],
+            "recurring_fee": "99.00",
+            "delivery_form": "SaaS",
+        }, headers=auth_header(admin_token))
+        assert response.status_code == 200
+        data = response.json()
+        assert data["tools_used"] == ["n8n", "OpenAI"]
+        assert float(data["recurring_fee"]) == 99.00
+        assert data["delivery_form"] == "SaaS"
