@@ -46,18 +46,15 @@ def _calculate_vat(subtotal: Decimal, vat_rate: Decimal) -> tuple[Decimal, Decim
     return vat_amount, total
 
 
-def _build_line_items(raw_items: list) -> tuple[list[dict], Decimal]:
+def _build_line_items(raw_items: list[InvoiceLineItem]) -> tuple[list[dict], Decimal]:
     """Recalculate item totals server-side and return serialized items + subtotal."""
     items = []
     for item in raw_items:
-        qty = Decimal(str(item.quantity if hasattr(item, "quantity") else item["quantity"]))
-        price = Decimal(str(item.unit_price if hasattr(item, "unit_price") else item["unit_price"]))
-        desc = item.description if hasattr(item, "description") else item["description"]
-        item_total = (qty * price).quantize(Decimal("0.01"))
+        item_total = (item.quantity * item.unit_price).quantize(Decimal("0.01"))
         items.append({
-            "description": desc,
-            "quantity": str(qty),
-            "unit_price": str(price),
+            "description": item.description,
+            "quantity": str(item.quantity),
+            "unit_price": str(item.unit_price),
             "total": str(item_total),
         })
     subtotal = sum(Decimal(i["total"]) for i in items)
