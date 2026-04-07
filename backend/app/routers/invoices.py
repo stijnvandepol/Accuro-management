@@ -7,14 +7,14 @@ from decimal import Decimal
 import io
 
 from app.database import get_db
-from app.core.dependencies import require_role, get_client_ip
+from app.core.dependencies import require_role, get_client_ip, get_business_settings
 from app.core.rbac import Role
 from app.services.audit_service import create_audit_log
 from app.services.pdf_service import generate_invoice_pdf
 from app.models.invoice import Invoice, InvoiceStatus
 from app.models.client import Client
 from app.models.business_settings import BusinessSettings
-from app.schemas.invoice import InvoiceCreate, InvoiceUpdate, InvoiceResponse, InvoiceFilterParams
+from app.schemas.invoice import InvoiceCreate, InvoiceUpdate, InvoiceResponse, InvoiceFilterParams, InvoiceLineItem
 
 router = APIRouter(prefix="/api/v1/invoices", tags=["invoices"])
 
@@ -245,6 +245,7 @@ async def download_invoice_pdf(
     invoice_id: str,
     current_user=Depends(require_role(Role.ADMIN, Role.FINANCE)),
     db: AsyncSession = Depends(get_db),
+    settings: BusinessSettings = Depends(get_business_settings),
 ) -> StreamingResponse:
     result = await db.execute(select(Invoice).where(Invoice.id == invoice_id))
     invoice = result.scalar_one_or_none()
@@ -255,11 +256,6 @@ async def download_invoice_pdf(
     client = client_result.scalar_one_or_none()
     if not client:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Client not found")
-
-    settings_result = await db.execute(select(BusinessSettings).where(BusinessSettings.id == 1))
-    settings = settings_result.scalar_one_or_none()
-    if not settings:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Business settings not configured")
 
     invoice_data = {
         "invoice_number": invoice.invoice_number,

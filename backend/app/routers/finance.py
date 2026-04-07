@@ -9,7 +9,7 @@ import io
 import calendar
 
 from app.database import get_db
-from app.core.dependencies import require_role
+from app.core.dependencies import require_role, get_business_settings
 from app.core.rbac import Role
 from app.services.pdf_service import generate_report_pdf
 from app.models.invoice import Invoice, InvoiceStatus
@@ -292,6 +292,7 @@ async def monthly_report(
     format: str = Query("json", pattern="^(json|csv|pdf)$"),
     current_user=Depends(require_role(Role.ADMIN, Role.FINANCE)),
     db: AsyncSession = Depends(get_db),
+    biz_settings: BusinessSettings = Depends(get_business_settings),
 ):
     result = await db.execute(
         select(Invoice, Client.company_name.label("client_name"))
@@ -372,13 +373,9 @@ async def monthly_report(
         )
 
     if format == "pdf":
-        settings_result = await db.execute(select(BusinessSettings).where(BusinessSettings.id == 1))
-        settings = settings_result.scalar_one_or_none()
-        if not settings:
-            raise HTTPException(status_code=400, detail="Business settings not configured")
         settings_data = {
-            "company_name": settings.company_name, "email": settings.email,
-            "kvk_number": settings.kvk_number, "vat_number": settings.vat_number,
+            "company_name": biz_settings.company_name, "email": biz_settings.email,
+            "kvk_number": biz_settings.kvk_number, "vat_number": biz_settings.vat_number,
         }
         report_data = report.model_dump()
         report_data["invoices"] = invoice_list
@@ -397,6 +394,7 @@ async def yearly_report(
     include_unpaid: bool = Query(False),
     current_user=Depends(require_role(Role.ADMIN, Role.FINANCE)),
     db: AsyncSession = Depends(get_db),
+    biz_settings: BusinessSettings = Depends(get_business_settings),
 ):
     status_filter = [InvoiceStatus.PAID.value]
     if include_unpaid:
@@ -472,13 +470,9 @@ async def yearly_report(
         )
 
     if format == "pdf":
-        settings_result = await db.execute(select(BusinessSettings).where(BusinessSettings.id == 1))
-        settings = settings_result.scalar_one_or_none()
-        if not settings:
-            raise HTTPException(status_code=400, detail="Business settings not configured")
         settings_data = {
-            "company_name": settings.company_name, "email": settings.email,
-            "kvk_number": settings.kvk_number, "vat_number": settings.vat_number,
+            "company_name": biz_settings.company_name, "email": biz_settings.email,
+            "kvk_number": biz_settings.kvk_number, "vat_number": biz_settings.vat_number,
         }
         report_data = report.model_dump()
         pdf_bytes = generate_report_pdf(report_data, "yearly", settings_data)
