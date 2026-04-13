@@ -16,6 +16,7 @@ from app.modules.registry import ModuleRegistry
 # Core routers (not yet migrated to modules)
 from app.routers import (
     auth,
+    oauth,
     users,
     communication,
     notes,
@@ -173,6 +174,7 @@ def create_app() -> FastAPI:
 
     # --- Register core routers (always active) ---
     app.include_router(auth.router)
+    app.include_router(oauth.router)
     app.include_router(users.router)
     app.include_router(dashboard.router)
     app.include_router(settings_router.router)
