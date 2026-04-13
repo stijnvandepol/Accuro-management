@@ -226,7 +226,8 @@ class TestOAuthToken:
         location = auth_response.headers["location"]
         code = location.split("code=")[1].split("&")[0]
 
-        response = await client.post(
+        # Wrong secret attempt should fail without consuming the code
+        wrong_response = await client.post(
             "/oauth/token",
             data={
                 "grant_type": "authorization_code",
@@ -236,7 +237,20 @@ class TestOAuthToken:
                 "redirect_uri": "https://example.com/callback",
             },
         )
-        assert response.status_code == 401
+        assert wrong_response.status_code == 401
+
+        # Code should still be usable — wrong secret does NOT consume it
+        correct_response = await client.post(
+            "/oauth/token",
+            data={
+                "grant_type": "authorization_code",
+                "code": code,
+                "client_id": "test-client",
+                "client_secret": "test-secret",
+                "redirect_uri": "https://example.com/callback",
+            },
+        )
+        assert correct_response.status_code == 200
 
     async def test_token_unsupported_grant_type(self, client, oauth_client):
         response = await client.post(
