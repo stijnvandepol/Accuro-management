@@ -67,11 +67,7 @@ async def consume_auth_code(code: str) -> dict | None:
     """Atomically get and delete auth code from Redis."""
     redis = await get_redis()
     key = f"oauth_code:{code}"
-    pipe = redis.pipeline()
-    pipe.get(key)
-    pipe.delete(key)
-    results = await pipe.execute()
-    raw = results[0]
+    raw = await redis.getdel(key)
     if raw is None:
         return None
     return json.loads(raw)
